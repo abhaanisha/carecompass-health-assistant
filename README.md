@@ -201,7 +201,38 @@ never averaged together.
 python -m eval.run_eval                 # deterministic paths, no key needed
 python -m eval.run_eval --model         # also checks generated text for dose leakage
 python -m eval.run_eval --lexical-only  # ablation: how much does the dense half earn?
+python -m eval.compare_providers        # A/B the configured model vendors
 ```
+
+### Which model provider?
+
+Answered by measurement rather than by vendor benchmarks, which score things
+this application does not care about. `eval/compare_providers.py` runs the gold
+cases that actually reach a model and scores what matters here: citation
+discipline, prescription leakage, agreement with the hand-labelled urgency, and
+latency.
+
+| Metric | Groq `openai/gpt-oss-120b` | Gemini `gemini-flash-latest` |
+| --- | --- | --- |
+| Answers completed, out of 10 | **10** | 1 |
+| Citation rate | **88.9%** | n/a |
+| Restricted intents handled cleanly | **100%** | n/a |
+| Urgency agreement with gold label | **85.7%** | n/a |
+| Urgency under-called | **0%** | n/a |
+| Median latency | **1.9 s** | 3.2 s |
+| Rate-limited into the fallback path | **0** | 9 |
+
+Groq is the default, and the decisive number is the last row rather than any
+quality metric: on the free tier Gemini was throttled out of nine of ten
+answers, which is not a demo. Where Groq did answer, it under-called urgency
+zero times. Gemini is kept configured as a second key, because the failure the
+fallback exists for is exactly the one it demonstrated.
+
+Two honest caveats. Gemini produced too few completed answers to judge its
+quality, so this is a measure of usable throughput on a free tier, not of model
+capability. And gpt-oss emits the `[[URGENCY]]` tag only ~70% of the time; when
+it is missing the rule floor governs, which is the safe default, so the cost is
+a lost second opinion rather than a wrong answer.
 
 `run_eval` exits non-zero if emergency recall drops below 100% or a dose-like
 instruction appears in generated text, so it works as a CI gate.
@@ -231,7 +262,7 @@ It runs with no configuration. To enable generated answers, set any one of:
 
 | Variable | Provider | Default model | Free tier |
 | --- | --- | --- | --- |
-| `GROQ_API_KEY` | Groq | `openai/gpt-oss-120b` | Yes, no card |
+| `GROQ_API_KEY` | Groq — **default, see the comparison above** | `openai/gpt-oss-120b` | Yes, no card |
 | `CEREBRAS_API_KEY` | Cerebras | `llama-3.3-70b` | Yes, no card |
 | `GEMINI_API_KEY` | Google Gemini | `gemini-flash-latest` | Yes |
 | `OPENAI_API_KEY` | OpenAI | `gpt-4o-mini` | No |
@@ -280,7 +311,7 @@ data/
 eval/
   goldset.yaml              52 labelled cases
   run_eval.py               metrics, failure list, CI gate
-tests/                      66 tests covering safety, triage, retrieval, pipeline, bundle
+tests/                      81 tests covering safety, triage, retrieval, pipeline, bundle, detector
 ```
 
 The rules live in YAML on purpose. A clinician reviewing whether "fever in an

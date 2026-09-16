@@ -85,7 +85,13 @@ class Citation:
 
 @dataclass
 class Answer:
+    #: The full reply, disclaimer included. What an API caller should use.
     text: str
+    #: The reply without the trailing disclaimer, and the disclaimer on its own.
+    #: A chat UI shows the disclaimer once, pinned near the input, rather than
+    #: repeating it under every message where it stops being read.
+    body: str
+    disclaimer: str
     triage: TriageResult
     safety: SafetyReport
     retrieval: RetrievalResult
@@ -193,8 +199,11 @@ class CareCompass:
 
         if not message:
             empty_safety = SafetyReport(query="", scanned_text="")
+            prompt_text = EMPTY_PROMPTS.get(lang, EMPTY_PROMPTS["en"])
             return Answer(
-                text=EMPTY_PROMPTS.get(lang, EMPTY_PROMPTS["en"]),
+                text=prompt_text,
+                body=prompt_text,
+                disclaimer=disclaimer_for(lang),
                 triage=TriageResult(level=Urgency.INFO, floor=Urgency.INFO),
                 safety=empty_safety,
                 retrieval=RetrievalResult(query="", expanded_query=""),
@@ -250,11 +259,15 @@ class CareCompass:
         if mode == MODE_MODEL and retrieval.grounded and not used:
             warnings.append("model answered without citing a source")
 
-        text = f"{text}\n\n---\n*{disclaimer_for(lang)}*"
+        body = text
+        disclaimer = disclaimer_for(lang)
+        text = f"{body}\n\n---\n*{disclaimer}*"
         latency_ms = int((time.perf_counter() - started) * 1000)
 
         answer = Answer(
             text=text,
+            body=body,
+            disclaimer=disclaimer,
             triage=triage,
             safety=safety,
             retrieval=retrieval,

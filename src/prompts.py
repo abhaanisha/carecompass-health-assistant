@@ -55,13 +55,23 @@ Write your answer consistent with that level. If the user's message contains som
 - Then a clearly marked section of specific warning signs that mean "seek care now", drawn from the sources.
 - Close with the single most useful next step.
 - Keep it under 250 words. Use markdown. Never use a table.
-- Re-read your draft before sending: does every factual bullet carry its [S] tag,
-  and does every number, threshold and phone number appear verbatim in a source?
-  If a detail is not in the sources, cut it rather than recalling it.
-- End your reply with a tag on its own final line: [[URGENCY: LEVEL]] where LEVEL is one of INFO, SELF_CARE, ROUTINE, URGENT, EMERGENCY. This tag is stripped before display.
 {restricted_block}
 ## Sources
 {sources}
+
+## Before you send, check all three
+Measured behaviour, not a formality: these are the two instructions most often dropped,
+and both are validated after you reply.
+
+1. **Citations.** Does the reply contain at least one [S] tag, and does every factual
+   bullet carry one? If not, add them now. An uncited answer cannot be checked by the
+   reader and is counted as a failed answer even when the content is correct.
+2. **No invented specifics.** Does every number, threshold and phone number appear
+   verbatim in a source above? If a detail is not there, cut it rather than recalling it.
+   No doses, ever.
+3. **The tag.** Is the very last line of your reply `[[URGENCY: LEVEL]]`, on its own,
+   with LEVEL one of INFO, SELF_CARE, ROUTINE, URGENT, EMERGENCY? It is stripped before
+   display, so it costs the reader nothing and its absence loses the urgency check.
 """
 
 RESTRICTED_TEMPLATE = """

@@ -24,9 +24,9 @@ A key is what turns it into a chatbot that writes prose.
 
 | Provider | Variable name | Free tier | Sign up |
 | --- | --- | --- | --- |
-| **Groq** (recommended) | `GROQ_API_KEY` | 30 req/min, ~1,000 req/day on `openai/gpt-oss-120b`. No credit card. | <https://console.groq.com/keys> |
+| **Groq** (recommended) | `GROQ_API_KEY` | 30 req/min on `openai/gpt-oss-120b`, no credit card. Completed 10/10 answers in the provider A/B; see the README. | <https://console.groq.com/keys> |
 | **Cerebras** | `CEREBRAS_API_KEY` | Generous, no credit card | <https://cloud.cerebras.ai/> |
-| **Google Gemini** | `GEMINI_API_KEY` | Free tier on `gemini-flash-latest` | <https://aistudio.google.com/apikey> |
+| **Google Gemini** | `GEMINI_API_KEY` | Free tier on `gemini-flash-latest`, but throttled out of 9 of 10 answers when measured. Good as a second key, not a primary. | <https://aistudio.google.com/apikey> |
 | OpenAI / Anthropic / OpenRouter / HF | `OPENAI_API_KEY` etc. | Paid | — |
 
 The first key found wins, in the order above. Override the model with
@@ -311,7 +311,7 @@ free CPU tier's memory.
 ## Before any deploy
 
 ```bash
-python -m pytest tests -q      # 66 tests
+python -m pytest tests -q      # 81 tests
 python -m eval.run_eval        # non-zero exit if emergency recall drops below 100%
 python build_space.py          # regenerate the static bundle
 ```
