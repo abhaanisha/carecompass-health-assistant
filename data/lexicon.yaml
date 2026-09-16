@@ -1,0 +1,153 @@
+# Query-expansion lexicon.
+#
+# Real users do not type clinical vocabulary. They type "loose motion", "sugar
+# high hai", "গা গরম". Lexical retrieval fails on that gap, so every user query is
+# expanded with the clinical terms below before it hits the BM25 index. The dense
+# retriever handles paraphrase; this handles vocabulary the embedding model has
+# never seen in Hinglish or transliterated Bengali.
+#
+# key: a term users actually type  ->  value: terms present in the knowledge base
+
+version: 1
+updated: "2026-09-01"
+
+expansions:
+  # --- Indian English and Hinglish ---
+  loose motion: [diarrhoea, stool, dehydration, ORS]
+  loose motions: [diarrhoea, stool, dehydration, ORS]
+  motions: [diarrhoea, stool]
+  potty: [stool, diarrhoea]
+  sugar: [diabetes, blood glucose, HbA1c]
+  # Transliteration is not standardised. "shugar", "suger" and "sugar" all
+  # arrive in real traffic, and none of them are in an English embedding model.
+  shugar: [diabetes, blood glucose, HbA1c]
+  suger: [diabetes, blood glucose, HbA1c]
+  pair: [foot, feet]
+  dekhbhal: [care, look after]
+  parhez: [diet, avoid]
+  sugar high: [hyperglycaemia, diabetes, blood glucose]
+  sugar low: [hypoglycaemia, diabetes, blood glucose]
+  bp: [blood pressure, hypertension]
+  bp high: [hypertension, blood pressure]
+  bp low: [blood pressure, dizziness, fainting]
+  gas: [abdominal, indigestion, stomach]
+  acidity: [reflux, abdominal, indigestion]
+  gastric: [reflux, abdominal, stomach]
+  body pain: [muscle, fever, aches]
+  body ache: [muscle, fever, aches]
+  giddiness: [dizziness, fainting, light-headed]
+  fits: [seizure, convulsion]
+  fever coming and going: [fever, malaria, dengue, typhoid]
+  viral: [fever, infection, viral]
+  weakness: [fatigue, anaemia, tiredness]
+  cold and cough: [cough, cold, respiratory]
+  chest infection: [pneumonia, respiratory, cough]
+  breathing problem: [breathless, respiratory, asthma]
+  sans: [breathless, respiratory]
+  saans: [breathless, respiratory]
+  seene me dard: [chest pain, cardiac]
+  sine me dard: [chest pain, cardiac]
+  pet dard: [abdominal pain, stomach]
+  pet me dard: [abdominal pain, stomach]
+  bukhar: [fever, temperature]
+  khansi: [cough, respiratory]
+  ulti: [vomiting, nausea]
+  dast: [diarrhoea, loose stool]
+  chakkar: [dizziness, fainting]
+  kamzori: [weakness, fatigue, anaemia]
+  behosh: [unconscious, collapse]
+  jaundice: [liver, yellow, hepatitis]
+  piles: [bleeding, stool, anal]
+  toddler: [child, young child, children]
+  sugar patient: [diabetes]
+  bp patient: [hypertension, blood pressure]
+  heart patient: [cardiac, heart disease]
+
+  # --- Hindi (Devanagari) ---
+  बुखार: [fever, temperature]
+  खांसी: [cough, respiratory]
+  सीने में दर्द: [chest pain, cardiac, heart attack]
+  पेट दर्द: [abdominal pain, stomach]
+  उल्टी: [vomiting, nausea]
+  दस्त: [diarrhoea, loose stool, ORS]
+  चक्कर: [dizziness, fainting]
+  कमजोरी: [weakness, fatigue, anaemia]
+  सांस: [breathless, respiratory, breathing]
+  शुगर: [diabetes, blood glucose]
+  रक्तचाप: [blood pressure, hypertension]
+  गर्भवती: [pregnancy, maternal, antenatal]
+  दवा: [medicine, medication, drug]
+  टीका: [vaccine, immunisation]
+
+  # --- Bengali ---
+  জ্বর: [fever, temperature]
+  কাশি: [cough, respiratory]
+  বুকে ব্যথা: [chest pain, cardiac, heart attack]
+  পেটে ব্যথা: [abdominal pain, stomach]
+  বমি: [vomiting, nausea]
+  পাতলা পায়খানা: [diarrhoea, loose stool, ORS]
+  মাথা ঘোরা: [dizziness, fainting]
+  দুর্বলতা: [weakness, fatigue, anaemia]
+  শ্বাসকষ্ট: [breathless, respiratory, asthma]
+  ডায়াবেটিস: [diabetes, blood glucose]
+  রক্তচাপ: [blood pressure, hypertension]
+  গর্ভবতী: [pregnancy, maternal, antenatal]
+  ওষুধ: [medicine, medication, drug]
+  টিকা: [vaccine, immunisation]
+
+# Words removed before lexical scoring. Deliberately small: over-aggressive stop
+# word removal destroys short queries like "is my bp ok".
+stopwords:
+  - a
+  - an
+  - and
+  - are
+  - as
+  - at
+  - be
+  - but
+  - by
+  - can
+  - do
+  - does
+  - for
+  - from
+  - had
+  - has
+  - have
+  - i
+  - if
+  - in
+  - is
+  - it
+  - me
+  - my
+  - of
+  - on
+  - or
+  - should
+  - so
+  - that
+  - the
+  - then
+  - there
+  - these
+  - they
+  - this
+  - to
+  - was
+  - we
+  - what
+  - when
+  - which
+  - will
+  - with
+  - you
+  - your
+  - hai
+  - ka
+  - ki
+  - ke
+  - se
+  - mera
+  - meri

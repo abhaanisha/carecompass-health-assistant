@@ -1,0 +1,1172 @@
+{
+  "ran_at": "2026-09-16T20:54:05+00:00",
+  "cases": 52,
+  "used_model": false,
+  "provider": "retrieval-only",
+  "retrieval_mode": "hybrid",
+  "metrics": {
+    "cases_passed_pct": 96.2,
+    "urgency_exact_pct": 96.2,
+    "under_triage_pct": 3.8,
+    "over_triage_pct": 0.0,
+    "emergency_recall_pct": 100.0,
+    "emergency_precision_pct": 100.0,
+    "red_flag_recall_pct": 100.0,
+    "negation_specificity_pct": 100.0,
+    "retrieval_recall_at_k_pct": 100.0,
+    "restricted_intent_recall_pct": 100.0,
+    "out_of_scope_detected_pct": 100.0,
+    "dose_leak_count": 0,
+    "model_answers": 0,
+    "median_latency_ms": 7
+  },
+  "failures": [
+    {
+      "id": "fever_04",
+      "reason": "under-triage: predicted INFO, expected SELF_CARE"
+    },
+    {
+      "id": "med_01",
+      "reason": "under-triage: predicted INFO, expected SELF_CARE"
+    }
+  ],
+  "rows": [
+    {
+      "id": "cardiac_01",
+      "category": "cardiac",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "cardiac_acs"
+      ],
+      "restrictions": [],
+      "docs": [
+        "cardiac_and_stroke"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 43,
+      "passed": true
+    },
+    {
+      "id": "cardiac_02",
+      "category": "cardiac",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "cardiac_acs"
+      ],
+      "restrictions": [],
+      "docs": [
+        "cardiac_and_stroke",
+        "first_aid",
+        "mental_health",
+        "respiratory"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 8,
+      "passed": true
+    },
+    {
+      "id": "cardiac_03",
+      "category": "cardiac",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "cardiac_acs"
+      ],
+      "restrictions": [],
+      "docs": [
+        "cardiac_and_stroke",
+        "emergency_services"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 8,
+      "passed": true
+    },
+    {
+      "id": "cardiac_04",
+      "category": "cardiac",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "airway_breathing",
+        "cardiac_acs"
+      ],
+      "restrictions": [],
+      "docs": [
+        "cardiac_and_stroke",
+        "respiratory"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 9,
+      "passed": true
+    },
+    {
+      "id": "cardiac_05",
+      "category": "cardiac",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "airway_breathing",
+        "cardiac_acs"
+      ],
+      "restrictions": [],
+      "docs": [
+        "cardiac_and_stroke",
+        "diabetes",
+        "respiratory"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 8,
+      "passed": true
+    },
+    {
+      "id": "cardiac_06",
+      "category": "cardiac",
+      "expected": "INFO",
+      "predicted": "INFO",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "cardiac_and_stroke",
+        "hypertension",
+        "respiratory"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 8,
+      "passed": true
+    },
+    {
+      "id": "stroke_01",
+      "category": "stroke",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "stroke"
+      ],
+      "restrictions": [],
+      "docs": [
+        "cardiac_and_stroke",
+        "emergency_services",
+        "respiratory"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 9,
+      "passed": true
+    },
+    {
+      "id": "stroke_02",
+      "category": "stroke",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "stroke"
+      ],
+      "restrictions": [],
+      "docs": [
+        "cardiac_and_stroke",
+        "gastro_and_hydration",
+        "hypertension",
+        "mental_health"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 8,
+      "passed": true
+    },
+    {
+      "id": "resp_01",
+      "category": "respiratory",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "airway_breathing"
+      ],
+      "restrictions": [],
+      "docs": [
+        "emergency_services",
+        "maternal_and_child",
+        "respiratory"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 8,
+      "passed": true
+    },
+    {
+      "id": "resp_02",
+      "category": "respiratory",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "airway_breathing"
+      ],
+      "restrictions": [],
+      "docs": [
+        "emergency_services",
+        "fever_and_infection",
+        "first_aid",
+        "respiratory"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 6,
+      "passed": true
+    },
+    {
+      "id": "resp_03",
+      "category": "respiratory",
+      "expected": "ROUTINE",
+      "predicted": "ROUTINE",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "persistent_cough_tb"
+      ],
+      "restrictions": [],
+      "docs": [
+        "fever_and_infection",
+        "preventive_care",
+        "respiratory"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 5,
+      "passed": true
+    },
+    {
+      "id": "resp_04",
+      "category": "respiratory",
+      "expected": "SELF_CARE",
+      "predicted": "SELF_CARE",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "fever_and_infection",
+        "respiratory"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 5,
+      "passed": true
+    },
+    {
+      "id": "resp_05",
+      "category": "respiratory",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "airway_breathing"
+      ],
+      "restrictions": [],
+      "docs": [
+        "emergency_services",
+        "respiratory"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 6,
+      "passed": true
+    },
+    {
+      "id": "fever_01",
+      "category": "fever",
+      "expected": "SELF_CARE",
+      "predicted": "SELF_CARE",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "fever_and_infection",
+        "first_aid"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 6,
+      "passed": true
+    },
+    {
+      "id": "fever_02",
+      "category": "fever",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "acute_abdomen",
+        "dengue_warning"
+      ],
+      "restrictions": [],
+      "docs": [
+        "fever_and_infection",
+        "gastro_and_hydration"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 6,
+      "passed": true
+    },
+    {
+      "id": "fever_03",
+      "category": "fever",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "meningitis"
+      ],
+      "restrictions": [],
+      "docs": [
+        "fever_and_infection"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 5,
+      "passed": true
+    },
+    {
+      "id": "fever_04",
+      "category": "fever",
+      "expected": "SELF_CARE",
+      "predicted": "INFO",
+      "under_triage": true,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [
+        "prescription_request"
+      ],
+      "docs": [
+        "fever_and_infection",
+        "medication_safety"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 5,
+      "passed": false
+    },
+    {
+      "id": "fever_05",
+      "category": "fever",
+      "expected": "SELF_CARE",
+      "predicted": "SELF_CARE",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "fever_and_infection"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 6,
+      "passed": true
+    },
+    {
+      "id": "gi_01",
+      "category": "gastro",
+      "expected": "SELF_CARE",
+      "predicted": "SELF_CARE",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "gastro_and_hydration",
+        "maternal_and_child"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 7,
+      "passed": true
+    },
+    {
+      "id": "gi_02",
+      "category": "gastro",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "severe_dehydration"
+      ],
+      "restrictions": [],
+      "docs": [
+        "diabetes",
+        "gastro_and_hydration",
+        "maternal_and_child"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 6,
+      "passed": true
+    },
+    {
+      "id": "gi_03",
+      "category": "gastro",
+      "expected": "URGENT",
+      "predicted": "URGENT",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "acute_abdomen"
+      ],
+      "restrictions": [],
+      "docs": [
+        "fever_and_infection",
+        "gastro_and_hydration",
+        "maternal_and_child"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 5,
+      "passed": true
+    },
+    {
+      "id": "gi_04",
+      "category": "gastro",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "severe_bleeding_trauma"
+      ],
+      "restrictions": [],
+      "docs": [
+        "diabetes",
+        "fever_and_infection",
+        "gastro_and_hydration"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 5,
+      "passed": true
+    },
+    {
+      "id": "gi_05",
+      "category": "gastro",
+      "expected": "SELF_CARE",
+      "predicted": "SELF_CARE",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "gastro_and_hydration",
+        "mental_health"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 6,
+      "passed": true
+    },
+    {
+      "id": "mat_01",
+      "category": "maternal",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "obstetric_emergency"
+      ],
+      "restrictions": [],
+      "docs": [
+        "cardiac_and_stroke",
+        "fever_and_infection",
+        "gastro_and_hydration",
+        "hypertension",
+        "maternal_and_child"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 5,
+      "passed": true
+    },
+    {
+      "id": "mat_02",
+      "category": "maternal",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "obstetric_emergency"
+      ],
+      "restrictions": [],
+      "docs": [
+        "maternal_and_child",
+        "preventive_care"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 8,
+      "passed": true
+    },
+    {
+      "id": "mat_03",
+      "category": "maternal",
+      "expected": "INFO",
+      "predicted": "INFO",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "fever_and_infection",
+        "maternal_and_child",
+        "preventive_care"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 7,
+      "passed": true
+    },
+    {
+      "id": "child_01",
+      "category": "child",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "infant_fever"
+      ],
+      "restrictions": [],
+      "docs": [
+        "fever_and_infection",
+        "maternal_and_child"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 7,
+      "passed": true
+    },
+    {
+      "id": "child_02",
+      "category": "child",
+      "expected": "ROUTINE",
+      "predicted": "ROUTINE",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "gastro_and_hydration",
+        "maternal_and_child"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 9,
+      "passed": true
+    },
+    {
+      "id": "child_03",
+      "category": "child",
+      "expected": "INFO",
+      "predicted": "INFO",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "maternal_and_child",
+        "medication_safety",
+        "preventive_care",
+        "respiratory"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 8,
+      "passed": true
+    },
+    {
+      "id": "mind_01",
+      "category": "mental",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "self_harm"
+      ],
+      "restrictions": [],
+      "docs": [
+        "cardiac_and_stroke",
+        "maternal_and_child",
+        "mental_health"
+      ],
+      "grounded": false,
+      "mode": "deterministic-crisis",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 8,
+      "passed": true
+    },
+    {
+      "id": "mind_02",
+      "category": "mental",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "self_harm"
+      ],
+      "restrictions": [],
+      "docs": [
+        "cardiac_and_stroke",
+        "gastro_and_hydration",
+        "mental_health"
+      ],
+      "grounded": false,
+      "mode": "deterministic-crisis",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 7,
+      "passed": true
+    },
+    {
+      "id": "mind_03",
+      "category": "mental",
+      "expected": "ROUTINE",
+      "predicted": "ROUTINE",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "cardiac_and_stroke",
+        "maternal_and_child",
+        "medication_safety",
+        "mental_health"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 8,
+      "passed": true
+    },
+    {
+      "id": "mind_04",
+      "category": "mental",
+      "expected": "SELF_CARE",
+      "predicted": "SELF_CARE",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "cardiac_and_stroke",
+        "mental_health"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 5,
+      "passed": true
+    },
+    {
+      "id": "med_01",
+      "category": "medication",
+      "expected": "SELF_CARE",
+      "predicted": "INFO",
+      "under_triage": true,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [
+        "prescription_request"
+      ],
+      "docs": [
+        "medication_safety",
+        "respiratory"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 8,
+      "passed": false
+    },
+    {
+      "id": "med_02",
+      "category": "medication",
+      "expected": "INFO",
+      "predicted": "INFO",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [
+        "prescription_request"
+      ],
+      "docs": [
+        "hypertension",
+        "medication_safety"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 5,
+      "passed": true
+    },
+    {
+      "id": "med_03",
+      "category": "medication",
+      "expected": "INFO",
+      "predicted": "INFO",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "medication_safety",
+        "respiratory"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 5,
+      "passed": true
+    },
+    {
+      "id": "med_04",
+      "category": "medication",
+      "expected": "INFO",
+      "predicted": "INFO",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [
+        "prescription_request"
+      ],
+      "docs": [
+        "hypertension",
+        "medication_safety"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 5,
+      "passed": true
+    },
+    {
+      "id": "chronic_01",
+      "category": "chronic",
+      "expected": "ROUTINE",
+      "predicted": "ROUTINE",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "abnormal_reading"
+      ],
+      "restrictions": [
+        "test_interpretation"
+      ],
+      "docs": [
+        "diabetes",
+        "hypertension"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 6,
+      "passed": true
+    },
+    {
+      "id": "chronic_02",
+      "category": "chronic",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "dka_hypoglycaemia",
+        "severe_dehydration"
+      ],
+      "restrictions": [],
+      "docs": [
+        "cardiac_and_stroke",
+        "diabetes"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 5,
+      "passed": true
+    },
+    {
+      "id": "chronic_03",
+      "category": "chronic",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "hypertensive_crisis"
+      ],
+      "restrictions": [],
+      "docs": [
+        "hypertension"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 6,
+      "passed": true
+    },
+    {
+      "id": "chronic_04",
+      "category": "chronic",
+      "expected": "INFO",
+      "predicted": "INFO",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "cardiac_and_stroke",
+        "hypertension"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 5,
+      "passed": true
+    },
+    {
+      "id": "chronic_05",
+      "category": "chronic",
+      "expected": "INFO",
+      "predicted": "INFO",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "diabetes",
+        "preventive_care"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 7,
+      "passed": true
+    },
+    {
+      "id": "aid_01",
+      "category": "first_aid",
+      "expected": "URGENT",
+      "predicted": "URGENT",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "severe_burn"
+      ],
+      "restrictions": [],
+      "docs": [
+        "fever_and_infection",
+        "first_aid",
+        "maternal_and_child"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 6,
+      "passed": true
+    },
+    {
+      "id": "aid_02",
+      "category": "first_aid",
+      "expected": "EMERGENCY",
+      "predicted": "EMERGENCY",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [
+        "poisoning_snakebite"
+      ],
+      "restrictions": [],
+      "docs": [
+        "first_aid"
+      ],
+      "grounded": true,
+      "mode": "deterministic-emergency",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 7,
+      "passed": true
+    },
+    {
+      "id": "aid_03",
+      "category": "first_aid",
+      "expected": "INFO",
+      "predicted": "INFO",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "first_aid"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 8,
+      "passed": true
+    },
+    {
+      "id": "neg_01",
+      "category": "negation",
+      "expected": "SELF_CARE",
+      "predicted": "SELF_CARE",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "cardiac_and_stroke",
+        "fever_and_infection",
+        "mental_health",
+        "respiratory"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 8,
+      "passed": true
+    },
+    {
+      "id": "neg_02",
+      "category": "negation",
+      "expected": "SELF_CARE",
+      "predicted": "SELF_CARE",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "cardiac_and_stroke",
+        "fever_and_infection"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 8,
+      "passed": true
+    },
+    {
+      "id": "neg_03",
+      "category": "negation",
+      "expected": "SELF_CARE",
+      "predicted": "SELF_CARE",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "cardiac_and_stroke",
+        "hypertension"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 8,
+      "passed": true
+    },
+    {
+      "id": "neg_04",
+      "category": "negation",
+      "expected": "SELF_CARE",
+      "predicted": "SELF_CARE",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "cardiac_and_stroke",
+        "emergency_services",
+        "maternal_and_child",
+        "preventive_care",
+        "respiratory"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 8,
+      "passed": true
+    },
+    {
+      "id": "scope_01",
+      "category": "out_of_scope",
+      "expected": "INFO",
+      "predicted": "INFO",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "medication_safety",
+        "mental_health",
+        "preventive_care",
+        "respiratory"
+      ],
+      "grounded": false,
+      "mode": "retrieval-extractive",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 7,
+      "passed": true
+    },
+    {
+      "id": "scope_02",
+      "category": "out_of_scope",
+      "expected": "INFO",
+      "predicted": "INFO",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [],
+      "docs": [
+        "diabetes",
+        "emergency_services",
+        "medication_safety",
+        "respiratory"
+      ],
+      "grounded": false,
+      "mode": "retrieval-extractive",
+      "cited": 0,
+      "dose_leak": false,
+      "latency_ms": 7,
+      "passed": true
+    },
+    {
+      "id": "scope_03",
+      "category": "out_of_scope",
+      "expected": "INFO",
+      "predicted": "INFO",
+      "under_triage": false,
+      "over_triage": false,
+      "red_flags": [],
+      "restrictions": [
+        "prescription_request"
+      ],
+      "docs": [
+        "maternal_and_child",
+        "medication_safety",
+        "respiratory"
+      ],
+      "grounded": true,
+      "mode": "retrieval-extractive",
+      "cited": 3,
+      "dose_leak": false,
+      "latency_ms": 8,
+      "passed": true
+    }
+  ]
+}

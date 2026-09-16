@@ -1,0 +1,10 @@
+# Optional: the dense half of the hybrid retriever.
+#
+#   pip install -r requirements-dense.txt
+#
+# Adds sentence-transformers, which pulls in torch. Worth it locally and on any
+# host with real memory; skip it on a free tier. Without it the retriever logs
+# "lexical" mode at startup and everything else behaves identically.
+
+-r requirements.txt
+sentence-transformers>=3.0

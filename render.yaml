@@ -1,0 +1,41 @@
+# Render blueprint — free web service.
+#
+# Deploy with: New -> Blueprint -> point at this repository.
+#
+# The free plan gives 512 MB of RAM and spins the service down after 15 minutes
+# of inactivity, with a 30-60 second cold start on the next request. That is
+# survivable for a portfolio link and is the reason `sentence-transformers` is
+# not in requirements.txt: torch does not fit in 512 MB.
+#
+# This blueprint runs the Gradio build. For the Streamlit build instead, swap
+# startCommand for:
+#   streamlit run streamlit_app.py --server.port $PORT --server.address 0.0.0.0
+
+services:
+  - type: web
+    name: carecompass
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      # Gradio reads these to bind correctly behind Render's proxy.
+      - key: GRADIO_SERVER_NAME
+        value: "0.0.0.0"
+      - key: GRADIO_SERVER_PORT
+        fromService:
+          type: web
+          name: carecompass
+          property: port
+      # Torch is not installed, so dense retrieval would fail over anyway.
+      # Setting this explicitly skips the failed import and its startup delay.
+      - key: CARECOMPASS_DISABLE_DENSE
+        value: "1"
+      # Set the value in the Render dashboard, not here. sync:false keeps the
+      # secret out of the repository.
+      - key: GROQ_API_KEY
+        sync: false

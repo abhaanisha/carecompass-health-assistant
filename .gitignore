@@ -1,0 +1,18 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.env
+.pytest_cache/
+.ipynb_checkpoints/
+.DS_Store
+
+# Embedding cache: regenerated on first run, keyed by a hash of the corpus.
+data/index/*.npy
+
+# Event log: ephemeral operational data, never committed.
+logs/*.jsonl
+
+# Streamlit local secrets — never commit real keys.
+.streamlit/secrets.toml

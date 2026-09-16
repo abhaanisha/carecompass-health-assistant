@@ -1,0 +1,21 @@
+# Runtime dependencies. Deliberately small and CPU-light so the app fits the
+# 512 MB - 1 GB RAM ceilings that free hosting tiers impose.
+#
+# The LLM layer talks HTTP directly, so no vendor SDK is pinned here and no
+# vendor's breaking release can take a deployment down.
+#
+# Both UI frameworks are listed because one requirements file that works on
+# every host is worth more than the ~30 s of build time the unused one costs.
+# Pick the entry point at deploy time: app.py (Gradio) or streamlit_app.py.
+
+gradio>=5.0,<6
+streamlit>=1.50
+requests>=2.31
+PyYAML>=6.0
+numpy>=1.26
+pandas>=2.0
+
+# Dense retrieval is intentionally NOT here -- see requirements-dense.txt.
+# It pulls in torch (~2 GB installed), which does not fit a free instance, and
+# the gold set scores identically without it on this corpus. Retrieval detects
+# its absence at startup and runs BM25-only.

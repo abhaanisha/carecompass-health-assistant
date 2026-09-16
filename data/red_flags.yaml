@@ -1,0 +1,428 @@
+# Red-flag rules for CareCompass.
+#
+# Every rule is a deterministic pattern match evaluated BEFORE the LLM is called.
+# The urgency here acts as a FLOOR: the language model may raise the urgency of a
+# conversation, but it can never lower it below the floor set in this file.
+#
+# urgency: EMERGENCY | URGENT | ROUTINE
+# action:  call_emergency | same_day_care | crisis_support | see_doctor
+#
+# Patterns are case-insensitive regular expressions.
+#
+# `patterns`     are matched AFTER negation is stripped, so "no chest pain" and
+#                "sine me dard nahi" do not fire the cardiac rule.
+# `patterns_raw` are matched against the original message. Use this only for
+#                red flags whose wording IS a negation -- "not breathing",
+#                "no urine since morning", "I don't want to live" -- where
+#                stripping the negation would delete the danger itself.
+
+version: 2
+updated: "2026-09-01"
+
+rules:
+  - id: cardiac_acs
+    label: Possible heart attack or unstable angina
+    urgency: EMERGENCY
+    action: call_emergency
+    source_doc: cardiac_and_stroke
+    patterns:
+      - "chest\\s*(pain|pressure|tightness|tight|heaviness|heavy|discomfort|burning|squeez)"
+      - "pain\\s+(in|on)\\s+(my\\s+)?chest"
+      - "(pain|numbness).{0,30}(left\\s+arm|jaw|radiat)"
+      - "heart\\s*attack"
+      - "angina"
+      # Atypical presentation: women, older adults and people with diabetes
+      # often have no chest pain at all. Breathlessness with sweating is the
+      # pattern most often dismissed at home.
+      - "breathless.{0,30}(sweat|clammy|nausea|vomit)"
+      - "(sweat|clammy).{0,30}breathless"
+      - "सीने में दर्द|छाती में दर्द|दिल का दौरा"
+      - "বুকে ব্যথা|বুক ব্যথা|হার্ট অ্যাটাক"
+      - "(seene|sine|chhati|chaati)\\s*(me|mein|men)?\\s*dard"
+    guidance: >-
+      Chest pain with sweating, nausea, breathlessness, or pain spreading to the arm or jaw
+      can be a heart attack. Call 112 or 108 now. Do not drive yourself to hospital.
+
+  - id: stroke
+    label: Possible stroke
+    urgency: EMERGENCY
+    action: call_emergency
+    source_doc: cardiac_and_stroke
+    patterns:
+      - "(face|mouth|smile).{0,25}(droop|crooked|tedha|twist)"
+      - "(one\\s+side|left\\s+side|right\\s+side|half).{0,30}(weak|numb|paralys|cannot move|can't move)"
+      - "sudden.{0,20}(weakness|numbness|confusion|blurred vision|loss of vision)"
+      - "(slurred|garbled)\\s*speech|cannot speak properly|can't speak properly|unable to speak"
+      - "stroke|paralysis|paralysed|लकवा|পক্ষাঘাত|স্ট্রোক"
+      - "worst headache (of my life|ever)|thunderclap headache"
+    guidance: >-
+      Sudden face droop, arm weakness or speech difficulty means a possible stroke.
+      Call 112 immediately and note the exact time symptoms started. Treatment only
+      works within a narrow time window. Give nothing to eat or drink.
+
+  - id: airway_breathing
+    label: Severe breathing difficulty
+    urgency: EMERGENCY
+    action: call_emergency
+    source_doc: respiratory
+    patterns:
+      - "(can'?t|cannot|unable to|difficulty|trouble|struggling to)\\s*breath"
+      - "(severe|gasping for|fighting for|short of)\\s*breath"
+      - "(very|really|extremely|suddenly|acutely|badly)\\s*breathless"
+      - "sudden(ly)?.{0,25}(breathless|short of breath)"
+      - "suffocat|choking|choked"
+      - "(lips|tongue|fingers|fingertips|nails).{0,20}(blue|bluish|grey|gray|purple)"
+      # Paediatric respiratory distress: the signs a parent can see, which are
+      # what the WHO danger-sign checklist is built on.
+      - "chest.{0,25}(sucking in|suck in|indrawing|drawing in|caving)"
+      - "breath(ing|es)?\\s*(very\\s*)?(fast|rapid|quick)"
+      - "grunting|nostrils? flar|flaring nostril"
+      - "too breathless to (speak|talk|eat|sleep|walk)"
+      - "(cannot|can'?t|unable to)\\s*(finish|complete|say)\\s*(a\\s*)?(full\\s*)?sentence"
+      - "साँस लेने में तकलीफ|दम घुट"
+      - "শ্বাসকষ্ট|দম বন্ধ"
+    patterns_raw:
+      - "not breathing|stopped breathing|is n'?t breathing"
+      - "(inhaler|reliever|nebuli[sz]er).{0,30}(not helping|not working|no relief|isn'?t helping|doesn'?t help)"
+      - "सांस नहीं|साँस नहीं"
+      - "শ্বাস নিতে পারছি না"
+      - "(saans|sans)\\s*(lene|nahi|nai|band)"
+    guidance: >-
+      Severe breathlessness, or blue lips or fingertips, is an emergency.
+      Call 112 now, sit the person upright, and help them use a prescribed reliever
+      inhaler if they have one.
+
+  - id: unconscious_seizure
+    label: Unconsciousness, seizure or collapse
+    urgency: EMERGENCY
+    action: call_emergency
+    source_doc: emergency_services
+    patterns:
+      - "unconscious|unresponsive|passed out|blacked out|collapsed"
+      - "seizure|convuls|fitting|epilep"
+      - "बेहोश|दौरा पड़|मिर्गी"
+      - "অজ্ঞান|খিঁচুনি|জ্ঞান হারা"
+      - "behosh|behoshi"
+    patterns_raw:
+      - "not waking|won'?t wake|will not wake|cannot be woken|can'?t (be )?wake"
+      - "fit(s)? (not stopping|won'?t stop)"
+    guidance: >-
+      Call 112 now. If the person is breathing, place them on their side in the
+      recovery position. Do not put anything in the mouth of someone having a seizure.
+
+  - id: severe_bleeding_trauma
+    label: Severe bleeding or major injury
+    urgency: EMERGENCY
+    action: call_emergency
+    source_doc: first_aid
+    patterns:
+      - "(heavy|severe|profuse|uncontrolled).{0,20}bleed"
+      - "bleeding.{0,20}(heavily|badly|non.?stop)"
+      - "vomit(ing)?\\s*blood|blood in (my )?vomit|coughing (up )?blood|black tarry stool"
+      - "(road|car|bike|accident).{0,20}(injur|hurt|hit)|hit by a (car|bus|truck|bike)"
+      - "(deep|gaping|open)\\s*(wound|cut|gash)|bone (is )?(sticking|visible|out)"
+      - "खून बह रहा|बहुत खून|दुर्घटना"
+      - "রক্তপাত|প্রচুর রক্ত|দুর্ঘটনা"
+    patterns_raw:
+      - "(won'?t stop|will not stop|not stopping|cannot stop).{0,25}bleed"
+      - "bleed(ing)?.{0,25}(won'?t stop|will not stop|not stopping)"
+    guidance: >-
+      Apply firm continuous pressure with a clean cloth and call 112.
+      Do not remove an embedded object and do not lift the cloth to check.
+
+  - id: self_harm
+    label: Risk of self-harm or suicide
+    urgency: EMERGENCY
+    action: crisis_support
+    source_doc: mental_health
+    # Split deliberately. "I would never hurt myself" must NOT fire, so those
+    # patterns respect negation. "I don't want to live" must fire, so those
+    # are matched raw.
+    patterns:
+      - "(kill|killing|end|ending|harm|hurt)\\s*(my ?self|himself|herself|themselves)"
+      - "suicid|want to die|better off dead|end it all"
+      - "end(ing)?\\s+(my|his|her|their)\\s+(life|lives)"
+      - "thinking (of|about)\\s*(dying|death|ending)"
+      - "(take|taken|took)\\s*(all|the whole)\\s*(the )?(tablets|pills|strip)"
+      - "overdose|od'?d"
+      - "आत्महत्या|मरना चाहता"
+      - "আত্মহত্যা|মরে যেতে চাই"
+    patterns_raw:
+      - "(don'?t|do not|dont|doesn'?t) want to (live|be here|wake up)"
+      - "no (reason|point) (to|in) liv|nothing to live for|can'?t go on|cannot go on"
+      - "जीना नहीं चाहता|जीने का मन नहीं"
+      - "বাঁচতে চাই না|বেঁচে থাকতে চাই না"
+    guidance: >-
+      You deserve support right now. Tele-MANAS 14416 and KIRAN 1800-599-0019 are free,
+      confidential and open 24x7. If there is immediate danger, call 112.
+
+  - id: poisoning_snakebite
+    label: Poisoning, overdose or snakebite
+    urgency: EMERGENCY
+    action: call_emergency
+    source_doc: first_aid
+    patterns:
+      - "snake\\s*(bite|bit)|bitten by a snake|साँप ने काटा|সাপে কামড়"
+      - "poison|pesticide|insecticide|swallowed.{0,25}(chemical|acid|kerosene|phenyl|detergent)"
+      - "scorpion sting|rabid|rabies|dog bit"
+      - "जहर|कीटनाशक|বিষ|কীটনাশক"
+    guidance: >-
+      Get to a hospital immediately. Poison helpline 1800-116-117. For snakebite,
+      keep the limb still and below heart level. Do not cut, suck or apply a tourniquet.
+
+  - id: meningitis
+    label: Possible meningitis or serious central nervous system infection
+    urgency: EMERGENCY
+    action: call_emergency
+    source_doc: fever_and_infection
+    patterns:
+      - "stiff neck|neck stiffness|गर्दन अकड़|ঘাড় শক্ত"
+      - "non.?blanching rash|glass test"
+      - "(fever|bukhar|জ্বর).{0,40}(stiff neck|confus|drowsy|unconscious|seizure)"
+      - "(severe|worst) headache.{0,30}(light|photophobia|vomit|fever)"
+    patterns_raw:
+      - "rash.{0,30}(does ?n'?t|doesn'?t|will not|won'?t|not) fade"
+    guidance: >-
+      A fever with a stiff neck, severe headache, dislike of light, or a rash that does
+      not fade under a glass may be meningitis. Go to an emergency department now.
+
+  - id: obstetric_emergency
+    label: Pregnancy danger sign
+    urgency: EMERGENCY
+    action: call_emergency
+    source_doc: maternal_and_child
+    patterns:
+      - "pregnan.{0,60}(bleed|blood|pain|fits|convuls|water broke|leaking)"
+      - "(bleed|blood|cramp).{0,60}pregnan"
+      # Pre-eclampsia: headache with visual change or facial swelling. Easy to
+      # dismiss as an ordinary headache, which is exactly why it is listed.
+      - "pregnan.{0,80}(headache|blurred vision|blurry vision|flashing light|visual disturbance|swollen (face|hand)|swelling of (the )?(face|hand))"
+      - "(headache|blurred vision|blurry vision|flashing light|swollen face).{0,80}pregnan"
+      - "reduced fetal movement"
+      - "(after delivery|postpartum|post ?natal).{0,30}(bleed|fever|foul)"
+      - "गर्भवती.{0,30}(खून|दर्द|दौरा)"
+      - "গর্ভবতী.{0,30}(রক্ত|ব্যথা|খিঁচুনি)"
+    patterns_raw:
+      - "baby (is )?(not|n'?t) moving|no fetal movement|no movement.{0,15}baby"
+    guidance: >-
+      Bleeding, severe headache with blurred vision, convulsions, severe abdominal pain
+      or reduced fetal movement in pregnancy are emergencies. Call 102, 108 or 112 now.
+
+  - id: infant_fever
+    label: Fever or danger sign in a young infant
+    urgency: EMERGENCY
+    action: call_emergency
+    source_doc: maternal_and_child
+    # Matched in both word orders, because "my 2 month old has fever" and
+    # "fever in my 2 month old" are equally common and the first version of
+    # this rule only caught one of them.
+    patterns:
+      - "(newborn|new ?born|neonate).{0,60}(fever|temperature|floppy|limp|jaundice|fast breathing|grunting|vomit|convuls)"
+      - "(fever|temperature|floppy|limp|jaundice|fast breathing|grunting|convuls).{0,60}(newborn|new ?born|neonate)"
+      - "\\b([1-9]|[1-3][0-9])\\s*days?\\s*old.{0,60}(fever|temperature|vomit|floppy|limp|jaundice|breathing)"
+      - "(fever|temperature|vomit|floppy|limp|jaundice).{0,60}\\b([1-9]|[1-3][0-9])\\s*days?\\s*old"
+      - "\\b([1-9]|1[0-2])\\s*weeks?\\s*old.{0,60}(fever|temperature|vomit|floppy|limp|jaundice|breathing)"
+      - "(fever|temperature|vomit|floppy|limp|jaundice).{0,60}\\b([1-9]|1[0-2])\\s*weeks?\\s*old"
+      - "\\b[0-2]\\s*months?\\s*old.{0,60}(fever|temperature|vomit|floppy|limp|jaundice|breathing)"
+      - "(fever|temperature|vomit|floppy|limp|jaundice).{0,60}\\b[0-2]\\s*months?\\s*old"
+    patterns_raw:
+      - "(newborn|new ?born|neonate|\\b[0-2]\\s*months?\\s*old|\\b\\d+\\s*(day|week)s?\\s*old).{0,60}(not feeding|refusing (to )?feed|not waking|will not wake|not drinking)"
+      - "(not feeding|refusing (to )?feed|not waking|will not wake).{0,60}(newborn|new ?born|neonate|\\b[0-2]\\s*months?\\s*old|\\b\\d+\\s*(day|week)s?\\s*old)"
+    guidance: >-
+      Any fever or feeding difficulty in a baby under three months needs emergency
+      assessment. Do not wait and watch. Go to hospital now.
+
+  - id: dka_hypoglycaemia
+    label: Blood sugar emergency
+    urgency: EMERGENCY
+    action: call_emergency
+    source_doc: diabetes
+    patterns:
+      - "(sugar|glucose).{0,25}(too low|very low|below 50|below 60|dropped)"
+      - "hypoglyc|hypo attack"
+      - "(fruity|sweet|acetone).{0,15}breath|ketoacidosis|\\bdka\\b|ketones (high|large|moderate)"
+      - "diabet.{0,40}(unconscious|confus|drowsy|vomiting|deep breathing)"
+    guidance: >-
+      If the person is awake, give 15 grams of fast sugar and recheck in 15 minutes.
+      If they are drowsy, unconscious or fitting, put nothing in their mouth and call 112.
+
+  - id: severe_dehydration
+    label: Severe dehydration
+    urgency: EMERGENCY
+    action: call_emergency
+    source_doc: gastro_and_hydration
+    patterns:
+      - "sunken eyes|skin stays pinched"
+      - "(cannot|can'?t|unable to) keep (any )?(fluid|water|liquid|food) down"
+      - "(very )?(drowsy|lethargic|floppy|limp).{0,30}(diarrhoea|diarrhea|vomit|loose motion)"
+    patterns_raw:
+      - "(no|not passing|hasn'?t passed|has not passed|not passed).{0,20}urin"
+      - "no wet (nappy|nappies|diaper)"
+      - "(no|hasn'?t|not) (passed )?urine (for|since)"
+    guidance: >-
+      These are signs of severe dehydration. Oral fluids alone are not enough.
+      Go to hospital for intravenous rehydration now.
+
+  - id: hypertensive_crisis
+    label: Hypertensive crisis
+    urgency: EMERGENCY
+    action: call_emergency
+    source_doc: hypertension
+    patterns:
+      - "(bp|blood pressure).{0,20}(1[89][0-9]|2[0-9][0-9])\\s*/\\s*(1[12][0-9]|1[3-9][0-9])"
+      - "(bp|blood pressure).{0,25}(very high|extremely high|dangerous)"
+      - "hypertensive (crisis|emergency|urgency)"
+    guidance: >-
+      A reading above 180/120 with chest pain, breathlessness, severe headache,
+      confusion or weakness is an emergency. Call 112. Do not self-adjust your dose.
+
+  - id: dengue_warning
+    label: Dengue warning signs
+    urgency: EMERGENCY
+    action: call_emergency
+    source_doc: fever_and_infection
+    patterns:
+      - "dengue.{0,90}(severe (abdominal|stomach|belly) pain|persistent vomiting|vomiting|bleeding|gums|nose bleed|black stool|restless|lethargic|clammy|platelet)"
+      - "(severe (abdominal|stomach|belly) pain|persistent vomiting|bleeding gums|black stool|platelet).{0,90}dengue"
+      - "डेंगू.{0,60}(दर्द|उल्टी|खून)"
+      - "ডেঙ্গু.{0,60}(ব্যথা|বমি|রক্ত)"
+    guidance: >-
+      These are dengue warning signs and they usually appear as the fever falls,
+      around day 3 to 7. Go to hospital now. Avoid ibuprofen and aspirin.
+
+  - id: abnormal_reading
+    label: Reading above the diagnostic threshold
+    urgency: ROUTINE
+    action: see_doctor
+    source_doc: diabetes
+    patterns:
+      # Fasting glucose at or above 126 mg/dL, or HbA1c at or above 6.5%,
+      # needs confirmation rather than reassurance.
+      - "(fasting|blood)?\\s*(sugar|glucose)\\s*(is|was|of|reading|came|:)?\\s*(1[3-9][0-9]|[2-9][0-9][0-9])\\b"
+      - "hba1c\\s*(is|was|of|:)?\\s*([6-9]\\.[5-9]|[7-9](\\.[0-9])?|1[0-9])\\b"
+      - "(bp|blood pressure)\\s*(is|was|of|reading|:)?\\s*(1[4-7][0-9])\\s*/\\s*(9[0-9]|1[01][0-9])"
+    guidance: >-
+      A single reading above the diagnostic threshold is not a diagnosis, but it
+      does need confirming with a repeat test rather than watching and waiting.
+
+  - id: acute_abdomen
+    label: Possible surgical abdomen
+    urgency: URGENT
+    action: same_day_care
+    source_doc: gastro_and_hydration
+    patterns:
+      - "(severe|worst|unbearable|excruciating).{0,20}(stomach|abdominal|belly|tummy)\\s*pain"
+      - "(pain|dard).{0,25}(lower right|right lower).{0,20}(abdomen|stomach|belly)"
+      - "appendic"
+      - "abdomen.{0,20}(rigid|hard|board)"
+      - "(cannot|can'?t) pass (stool|motion|wind|gas)"
+      - "पेट में तेज दर्द|পেটে তীব্র ব্যথা"
+    patterns_raw:
+      - "not able to pass (stool|motion|wind|gas)"
+    guidance: >-
+      Severe abdominal pain, especially with fever, vomiting or a rigid abdomen,
+      needs same-day examination. Do not take painkillers before being assessed.
+
+  - id: heat_stroke
+    label: Possible heat stroke
+    urgency: EMERGENCY
+    action: call_emergency
+    source_doc: first_aid
+    patterns:
+      - "heat ?stroke|sun ?stroke|लू लग|হিটস্ট্রোক"
+      - "(confus|collaps|faint).{0,30}(heat|sun|working outside)"
+    patterns_raw:
+      - "(very hot|burning).{0,20}skin.{0,30}(confus|no sweat|dry)"
+    guidance: >-
+      Heat stroke with confusion or collapse is an emergency. Call 112, move to shade,
+      remove outer clothing and cool aggressively with water and fanning.
+
+  - id: severe_burn
+    label: Serious burn
+    urgency: URGENT
+    action: same_day_care
+    source_doc: first_aid
+    patterns:
+      - "burn.{0,30}(face|hand|foot|feet|genital|large|big|blister|white|charred|leather)"
+      - "(electric|chemical|acid)\\s*burn"
+      - "scald"
+    guidance: >-
+      Cool the burn under running water for 20 minutes, cover loosely with clean cloth,
+      and get medical review. Never apply ice, toothpaste, butter or ghee.
+
+  - id: persistent_cough_tb
+    label: Cough lasting more than two weeks
+    urgency: ROUTINE
+    action: see_doctor
+    source_doc: respiratory
+    patterns:
+      - "cough.{0,30}(two|three|2|3|four|4|[2-9])\\s*(week|month)"
+      - "(week|month)s?.{0,20}(cough|khansi|কাশি)"
+      - "cough.{0,40}(weight loss|night sweat|blood)"
+    guidance: >-
+      A cough lasting more than two weeks should be evaluated for tuberculosis.
+      Sputum testing and treatment are free at government health facilities.
+
+context_modifiers:
+  # These raise urgency by one level (never above EMERGENCY) when they co-occur
+  # with any symptom, because these groups deteriorate faster.
+  - id: pregnancy
+    label: pregnancy
+    patterns: ["pregnan|expecting a baby|गर्भवती|গর্ভবতী|\\b\\d+\\s*(week|month)s?\\s*pregnant"]
+  - id: infant
+    label: infant under 1 year
+    patterns: ["newborn|new ?born|neonate|\\b([0-9]|1[01])\\s*months?\\s*old|\\b\\d+\\s*(day|week)s?\\s*old|infant"]
+  - id: young_child
+    label: child under 5
+    patterns: ["\\b[1-4]\\s*(year|yr)s?\\s*old|toddler|\\b(my|our)\\s*(baby|toddler)\\b"]
+  - id: elderly
+    label: older adult
+    patterns: ["\\b(6[5-9]|[7-9][0-9]|1[0-9][0-9])\\s*(year|yr|y\\/?o)|elderly|old age|grandmother|grandfather|dadi|nani|dada|nana"]
+  - id: immunocompromised
+    label: reduced immunity
+    patterns: ["chemo|cancer|transplant|hiv|immunocompromis|on steroids|dialysis|spleen removed"]
+  - id: chronic_disease
+    label: chronic condition
+    patterns: ["diabet|sugar patient|heart (disease|patient)|kidney (disease|failure)|copd|asthma|liver disease|bp patient"]
+
+# Requests the assistant must decline and redirect, with a safe alternative.
+restricted_intents:
+  - id: prescription_request
+    label: Request for a prescription or dose
+    patterns:
+      - "(which|what|recommend|suggest|prescribe|give me|tell me).{0,30}(antibiotic|medicine|tablet|drug|injection)"
+      - "how (many|much).{0,25}(mg|tablet|ml|dose|spoon)"
+      - "(dose|dosage|mg)\\s*(of|for)\\s*\\w+"
+      - "(can|should|may)\\s+i\\s+(take|use|have|give)\\b"
+      - "is it (safe|ok|okay|fine|alright) to (take|use|give|combine)"
+      - "(take|taking)\\s+\\w+\\s+(with|along with|together with)\\s+\\w+"
+      - "कौन सी दवा|कितनी खुराक|কোন ওষুধ|কত ডোজ"
+    response_policy: >-
+      Explain that dose and drug choice depend on weight, kidney and liver function,
+      pregnancy and other medicines, so it must come from a clinician or pharmacist.
+      Offer general medicine-safety information instead, and describe when to seek care.
+
+  - id: diagnosis_request
+    label: Request for a definite diagnosis
+    patterns:
+      - "(what|which)\\s*(disease|illness|condition|infection)\\s*(do|have)\\s*i"
+      - "(do|have)\\s*i\\s*(have|got)\\s*(cancer|tb|dengue|covid|diabetes|heart|hiv)"
+      - "diagnose me|tell me what i have|what'?s wrong with me"
+      - "मुझे कौन सी बीमारी|আমার কী রোগ"
+    response_policy: >-
+      Explain that a diagnosis needs examination and tests. Describe what the symptom
+      pattern could be consistent with in general terms, and give clear criteria for
+      when to see a doctor and what to ask for.
+
+  - id: test_interpretation
+    label: Request to interpret a report
+    patterns:
+      - "(my|the)\\s*(report|result|scan|x.?ray|mri|ct|biopsy|blood test).{0,30}(means|meaning|interpret|normal|ok)"
+      - "is (this|my)\\s*(value|level|count|report).{0,20}(normal|bad|serious)"
+      # A number the user has quoted from a report, with a request to read it.
+      - "(sugar|glucose|hba1c|h?b|haemoglobin|hemoglobin|cholesterol|platelet|creatinine|tsh|bp|blood pressure)\\s*(is|was|came|of|reading|:)?\\s*[\\d.]+.{0,40}(mean|means|normal|ok|okay|bad|high|low|serious|worry)"
+      - "(what|does) (does |do )?(that|this|it) mean.{0,30}(sugar|report|result|value|level|reading)"
+    response_policy: >-
+      Give general reference-range context from the knowledge base, but state clearly
+      that an individual report must be read alongside history and examination by the
+      clinician who ordered it.
