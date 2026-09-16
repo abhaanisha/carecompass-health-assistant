@@ -156,3 +156,45 @@ def test_dotenv_absent_is_not_an_error(tmp_path):
     from src.config import load_dotenv
 
     assert load_dotenv(tmp_path / "nope.env") == []
+
+
+def test_vague_symptom_asks_instead_of_refusing(retriever):
+    """"i am in pain" is in scope and underspecified, not out of scope."""
+    from src.pipeline import MODE_CLARIFY
+
+    settings = get_settings().with_(use_dense=False, log_events=False, provider=PROVIDER_NONE)
+    assistant = CareCompass(settings=settings, retriever=retriever, llm=StubLLM())
+    assistant.llm.available = False
+
+    answer = assistant.answer("i am in pain what to do?")
+
+    assert answer.mode == MODE_CLARIFY
+    assert "could not find" not in answer.text.lower()
+    assert "?" in answer.text, "a clarifying reply has to actually ask something"
+    assert "112" in answer.text, "the severe-symptom exception must survive"
+
+
+def test_vague_symptom_clarifies_in_the_users_language(retriever):
+    from src.pipeline import MODE_CLARIFY
+
+    settings = get_settings().with_(use_dense=False, log_events=False, provider=PROVIDER_NONE)
+    assistant = CareCompass(settings=settings, retriever=retriever, llm=StubLLM())
+    assistant.llm.available = False
+
+    answer = assistant.answer("मुझे दर्द हो रहा है")
+    assert answer.language == "hi"
+    assert answer.mode == MODE_CLARIFY
+    assert "112" in answer.text
+
+
+def test_non_health_question_is_still_refused(retriever):
+    """The clarifying path must not swallow genuinely out-of-scope questions."""
+    from src.pipeline import MODE_EXTRACTIVE
+
+    settings = get_settings().with_(use_dense=False, log_events=False, provider=PROVIDER_NONE)
+    assistant = CareCompass(settings=settings, retriever=retriever, llm=StubLLM())
+    assistant.llm.available = False
+
+    answer = assistant.answer("write me a python function to sort a list")
+    assert answer.mode == MODE_EXTRACTIVE
+    assert "could not find" in answer.text.lower()

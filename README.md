@@ -61,6 +61,7 @@ design argument.
 | `বুকে ব্যথা হচ্ছে আর ঘাম হচ্ছে` | Bengali — fixed emergency text, not a machine translation |
 | `which antibiotic should I take for a sore throat?` | Restricted intent — declines to prescribe, explains why |
 | `how much salt per day is safe with high blood pressure?` | Informational question, correctly not treated as a complaint |
+| `i am in pain what to do?` | Too vague to ground — asks what a clinician would ask, instead of refusing |
 | `write me a python function to sort a list` | Out-of-scope detection — refuses instead of improvising |
 
 ---
@@ -123,7 +124,10 @@ user message
     │
     ├─▶ 4a. EMERGENCY or self-harm → fixed card. No model is called.
     │
-    └─▶ 4b. otherwise → model answers from the retrieved passages only,
+    ├─▶ 4b. a symptom too vague to match anything → ask what a clinician would
+    │        ask, in the user's language, rather than refuse
+    │
+    └─▶ 4c. otherwise → model answers from the retrieved passages only,
                         must cite [S1]…[Sn], may raise urgency
                         ↓ on any failure
                         extractive answer from the same passages

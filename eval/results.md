@@ -1,6 +1,6 @@
 # CareCompass evaluation
 
-- Run: `2026-09-16T21:23:33+00:00`
+- Run: `2026-09-16T21:30:46+00:00`
 - Cases: **52**
 - Retrieval: `hybrid`
 - Model: `retrieval-only` (deterministic paths only)
@@ -20,7 +20,7 @@
 | out of scope detected (%) | 100.0 |
 | dose leak count | 0 |
 | model answers | 0 |
-| median latency ms | 6 |
+| median latency ms | 8 |
 
 ## Failing cases
 

@@ -64,13 +64,17 @@ _SYMPTOM_RE = re.compile(
     r"breathless|breathing|wheez|tired|fatigue|weak|weakness|burning|cramp|sore|"
     r"injur|wound|burn|bite|sting|numb|tingl|blurred|discharge|constipat|insomnia|"
     r"anxious|anxiety|depress|panic|stress|infection|lump|ulcer|"
-    r"headache|migraine|sad|hopeless|lonely|crying|low mood|sleepless)\b"
+    r"headache|migraine|sad|hopeless|lonely|crying|low mood|sleepless|"
+    # General malaise. People often open with these and nothing else, and
+    # "I feel unwell" has to be met with a question, not a refusal.
+    r"unwell|sick|ill|discomfort|uncomfortable|not feeling well|feeling off)\b"
     # Romanised Hindi and Bengali, which is how a large share of Indian users
     # actually type. Without these, "bukhar hai" scores as a general question.
     r"|\b(dard|bukhar|khansi|ulti|dast|chakkar|kamzori|saans|behosh|sujan|"
     r"jor|kashi|bomi|byatha|matha ghurche|durbolota)\b"
-    r"|दर्द|बुखार|खांसी|उल्टी|कमजोरी|सूजन|दस्त|चक्कर"
-    r"|ব্যথা|জ্বর|কাশি|বমি|দুর্বলতা|ফোলা",
+    r"|\b(tabiyat|tabiat|bimar|beemar|osustho|oshusth)\b"
+    r"|दर्द|बुखार|खांसी|उल्टी|कमजोरी|सूजन|दस्त|चक्कर|तबीयत|बीमार"
+    r"|ব্যথা|জ্বর|কাশি|বমি|দুর্বলতা|ফোলা|অসুস্থ|শরীর খারাপ",
     re.IGNORECASE,
 )
 
@@ -120,6 +124,17 @@ class TriageResult:
             "modifiers": self.modifier_labels,
             "escalated_by_modifier": self.escalated_by_modifier,
         }
+
+
+def mentions_symptom(text: str) -> bool:
+    """Is the user describing a bodily complaint at all?
+
+    Used to tell two kinds of unmatched query apart. "write me a python
+    function" is out of scope and should be refused. "i am in pain what to do"
+    is squarely in scope and merely underspecified, and refusing that is the
+    worst possible answer -- the person is telling you they are in pain.
+    """
+    return bool(_SYMPTOM_RE.search(text or ""))
 
 
 def _max_duration_days(text: str) -> int:
@@ -222,6 +237,7 @@ __all__ = [
     "LevelMeta",
     "TriageResult",
     "assess",
+    "mentions_symptom",
     "merge_model_level",
     "parse_level_tag",
     "urgency_names",

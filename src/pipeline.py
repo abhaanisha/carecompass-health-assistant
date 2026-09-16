@@ -38,6 +38,7 @@ from .llm import LLMClient
 from .prompts import (
     build_messages,
     build_system_prompt,
+    clarify_card,
     crisis_card,
     disclaimer_for,
     emergency_card,
@@ -45,7 +46,15 @@ from .prompts import (
 )
 from .retrieval import RetrievalResult, Retriever
 from .safety import SafetyReport, redact, scan
-from .triage import LEVELS, TriageResult, Urgency, assess, merge_model_level, parse_level_tag
+from .triage import (
+    LEVELS,
+    TriageResult,
+    Urgency,
+    assess,
+    mentions_symptom,
+    merge_model_level,
+    parse_level_tag,
+)
 
 CITATION_RE = re.compile(r"\[S(\d+)\]")
 
@@ -53,6 +62,7 @@ MODE_EMERGENCY = "deterministic-emergency"
 MODE_CRISIS = "deterministic-crisis"
 MODE_MODEL = "model-grounded"
 MODE_EXTRACTIVE = "retrieval-extractive"
+MODE_CLARIFY = "clarifying-question"
 
 EMPTY_PROMPTS = {
     "en": "Tell me what is going on and I will help you work out what to do next.",
@@ -265,6 +275,10 @@ class CareCompass:
         """Non-emergency answer: model if available, extractive otherwise."""
         warnings: list[str] = []
 
+        # Nothing matched, but the person is plainly describing a symptom.
+        # Ask, rather than refuse.
+        vague = not retrieval.grounded and mentions_symptom(message)
+
         if self.llm.available:
             system = build_system_prompt(
                 app_name=APP_NAME,
@@ -272,13 +286,18 @@ class CareCompass:
                 triage=triage,
                 safety=safety,
                 retrieval=retrieval,
+                vague=vague,
             )
             response = self.llm.chat(system, build_messages(history, message))
             if response.ok:
                 level, cleaned = parse_level_tag(response.text)
                 merge_model_level(triage, level)
-                return cleaned, MODE_MODEL, response.provider, response.model, warnings
+                mode = MODE_CLARIFY if vague else MODE_MODEL
+                return cleaned, mode, response.provider, response.model, warnings
             warnings.append(f"model call failed ({response.error}); used retrieval only")
+
+        if vague:
+            return clarify_card(lang), MODE_CLARIFY, PROVIDER_NONE, "", warnings
 
         return (
             self._extractive(retrieval, triage, lang, safety),

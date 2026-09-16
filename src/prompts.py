@@ -76,6 +76,20 @@ NO_CONTEXT_NOTE = (
     "answer from general knowledge."
 )
 
+CLARIFY_NOTE = """The user has described a symptom, but too vaguely to match anything specific in the knowledge base.
+
+Do NOT refuse, and do NOT guess at a cause. Ask the questions a clinician would ask first:
+- what exactly they feel, and where in the body
+- how long it has been going on, and whether it is getting worse
+- what else is happening alongside it
+- who it is for, and roughly what age
+
+Ask at most four, as short bullets. Under 120 words. Warm and direct, no preamble.
+Finish with the exception that overrides all of it: if the symptom is severe and came on
+suddenly, involves the chest, or comes with breathlessness, confusion, fainting or heavy
+bleeding, they should call 112 now rather than answering questions.
+Do not cite sources for a clarifying question; there is nothing to cite yet."""
+
 
 def format_sources(retrieval: RetrievalResult) -> str:
     if not retrieval.hits:
@@ -98,6 +112,7 @@ def build_system_prompt(
     triage: TriageResult,
     safety: SafetyReport,
     retrieval: RetrievalResult,
+    vague: bool = False,
 ) -> str:
     meta = LEVELS[triage.level]
     reasons = "\n".join(f"- {r}" for r in triage.reasons) or "- No specific rule fired."
@@ -108,7 +123,9 @@ def build_system_prompt(
         restricted_block = RESTRICTED_TEMPLATE.format(items=items)
 
     sources = format_sources(retrieval)
-    if not retrieval.grounded:
+    if vague:
+        sources = f"{CLARIFY_NOTE}\n\n{sources}"
+    elif not retrieval.grounded:
         sources = f"{NO_CONTEXT_NOTE}\n\n{sources}"
 
     return SYSTEM_TEMPLATE.format(
@@ -278,6 +295,52 @@ def restricted_note(restriction_id: str, language: str = "en") -> str:
     """
     variants = _RESTRICTED_NOTES.get(restriction_id, {})
     return variants.get(language) or variants.get("en", "")
+
+
+_CLARIFY = {
+    "en": (
+        "I can help with this — I just need a bit more to point you the right way.\n\n"
+        "- **What does it feel like, and where?** For example aching, burning, cramping, "
+        "sharp; in the head, chest, stomach, back, a joint.\n"
+        "- **How long has it been there**, and is it getting worse?\n"
+        "- **Anything alongside it** — fever, vomiting, breathlessness, a rash, an injury?\n"
+        "- **Who is this for**, and roughly what age?\n\n"
+        "One exception, and it matters more than any of the above: if the pain is severe "
+        "and came on suddenly, is in the chest, or comes with breathlessness, confusion, "
+        "fainting or heavy bleeding — **call 112 now** instead of answering these."
+    ),
+    "hi": (
+        "मैं मदद कर सकता हूँ — बस थोड़ी और जानकारी चाहिए।\n\n"
+        "- **कैसा महसूस हो रहा है और कहाँ?** जैसे जलन, ऐंठन, तेज़ चुभन; सिर, छाती, पेट, "
+        "कमर या किसी जोड़ में।\n"
+        "- **कब से है**, और क्या बढ़ रहा है?\n"
+        "- **साथ में और क्या है** — बुखार, उल्टी, साँस फूलना, दाने, कोई चोट?\n"
+        "- **किसके लिए पूछ रहे हैं**, और उम्र लगभग कितनी है?\n\n"
+        "एक बात इन सबसे ज़्यादा ज़रूरी है: अगर दर्द अचानक और बहुत तेज़ है, छाती में है, या "
+        "साथ में साँस फूलना, भ्रम, बेहोशी या ज़्यादा खून बह रहा है — **तुरंत 112 पर कॉल करें**।"
+    ),
+    "bn": (
+        "আমি সাহায্য করতে পারি — শুধু আর একটু জানা দরকার।\n\n"
+        "- **কেমন লাগছে এবং কোথায়?** যেমন জ্বালা, খিঁচ ধরা, তীক্ষ্ণ ব্যথা; মাথা, বুক, পেট, "
+        "কোমর বা কোনও গাঁটে।\n"
+        "- **কতদিন ধরে**, এবং বাড়ছে কি?\n"
+        "- **সঙ্গে আর কী আছে** — জ্বর, বমি, শ্বাসকষ্ট, র‍্যাশ, কোনও আঘাত?\n"
+        "- **কার জন্য জানতে চাইছেন**, বয়স আনুমানিক কত?\n\n"
+        "একটি কথা এ সবের চেয়ে জরুরি: ব্যথা যদি হঠাৎ ও তীব্র হয়, বুকে হয়, বা সঙ্গে শ্বাসকষ্ট, "
+        "বিভ্রান্তি, অজ্ঞান হওয়া বা প্রচুর রক্তপাত থাকে — **এখনই 112 নম্বরে ফোন করুন**।"
+    ),
+}
+
+
+def clarify_card(language: str = "en") -> str:
+    """Asked when a message is clearly about health but too vague to ground.
+
+    Used on the extractive path, which is what runs when no model key is set.
+    Telling someone who just said "I am in pain" that their question is not in
+    the knowledge base is the single worst answer this system could give, and
+    for a while it was the answer it gave.
+    """
+    return _CLARIFY.get(language, _CLARIFY["en"])
 
 
 def disclaimer_for(language: str = "en") -> str:
