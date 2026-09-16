@@ -7,6 +7,8 @@ which provider is configured.
 
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from src.config import PROVIDER_NONE, get_settings
@@ -125,3 +127,32 @@ def test_extractive_path_voices_the_refusal(retriever):
     answer = assistant.answer("which antibiotic should I take for a sore throat")
     assert answer.mode == MODE_EXTRACTIVE
     assert "can't recommend a medicine" in answer.text
+
+
+def test_dotenv_fills_only_missing_variables(tmp_path, monkeypatch):
+    """A real environment variable must win over a stale local .env."""
+    from src.config import load_dotenv
+
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        '# a comment\n'
+        'export CARECOMPASS_TEST_NEW="from-file"\n'
+        "CARECOMPASS_TEST_EXISTING='from-file'\n"
+        "MALFORMED\n"
+        "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("CARECOMPASS_TEST_EXISTING", "from-environment")
+    monkeypatch.delenv("CARECOMPASS_TEST_NEW", raising=False)
+
+    applied = load_dotenv(env_file)
+
+    assert applied == ["CARECOMPASS_TEST_NEW"]
+    assert os.environ["CARECOMPASS_TEST_NEW"] == "from-file"
+    assert os.environ["CARECOMPASS_TEST_EXISTING"] == "from-environment"
+
+
+def test_dotenv_absent_is_not_an_error(tmp_path):
+    from src.config import load_dotenv
+
+    assert load_dotenv(tmp_path / "nope.env") == []

@@ -82,9 +82,23 @@ class LLMClient:
         for attempt in range(2):
             try:
                 if spec.api == "anthropic":
-                    text, usage = self._anthropic(system, messages, max_tokens, temperature)
+                    text, usage, finish = self._anthropic(
+                        system, messages, max_tokens, temperature
+                    )
                 else:
-                    text, usage = self._openai(system, messages, max_tokens, temperature)
+                    text, usage, finish = self._openai(
+                        system, messages, max_tokens, temperature
+                    )
+
+                # A 200 with no text is a real failure mode, not an edge case:
+                # reasoning models spend max_tokens on thinking and return an
+                # empty content field. Say so, instead of "None".
+                error = None
+                if not text.strip():
+                    error = f"provider returned no text (finish_reason={finish})"
+                    if finish in {"length", "max_tokens"}:
+                        error += "; raise CARECOMPASS_MAX_TOKENS"
+
                 return LLMResponse(
                     text=text.strip(),
                     ok=bool(text.strip()),
@@ -92,6 +106,7 @@ class LLMClient:
                     model=self.settings.model,
                     latency_ms=int((time.perf_counter() - started) * 1000),
                     usage=usage,
+                    error=error,
                 )
             except _RetryableError as exc:
                 last_error = str(exc)
@@ -129,7 +144,22 @@ class LLMClient:
             raise RuntimeError(f"HTTP {response.status_code}: {detail}")
         return response.json()
 
-    def _openai(self, system, messages, max_tokens, temperature) -> tuple[str, dict]:
+    def _extra_body(self) -> dict:
+        """Vendor-specific request fields, filtered to the selected model.
+
+        ``reasoning_effort`` is only accepted by reasoning models. Sending it to
+        a plain chat model is a 400, so a user who overrides
+        ``CARECOMPASS_MODEL`` must not inherit a flag that breaks their choice.
+        """
+        extras = dict((self.settings.spec.extra_body if self.settings.spec else {}) or {})
+        model = (self.settings.model or "").lower()
+        if "reasoning_effort" in extras and not any(
+            token in model for token in ("gpt-oss", "qwen", "o1", "o3", "reason")
+        ):
+            extras.pop("reasoning_effort")
+        return extras
+
+    def _openai(self, system, messages, max_tokens, temperature) -> tuple[str, dict, str]:
         spec = self.settings.spec
         data = self._post(
             f"{spec.base_url}/chat/completions",
@@ -142,13 +172,15 @@ class LLMClient:
                 "messages": [{"role": "system", "content": system}, *messages],
                 "max_tokens": max_tokens,
                 "temperature": temperature,
+                **self._extra_body(),
             },
         )
         choices = data.get("choices") or []
-        text = choices[0].get("message", {}).get("content", "") if choices else ""
-        return text or "", data.get("usage") or {}
+        first = choices[0] if choices else {}
+        text = first.get("message", {}).get("content", "") if choices else ""
+        return text or "", data.get("usage") or {}, str(first.get("finish_reason") or "")
 
-    def _anthropic(self, system, messages, max_tokens, temperature) -> tuple[str, dict]:
+    def _anthropic(self, system, messages, max_tokens, temperature) -> tuple[str, dict, str]:
         spec = self.settings.spec
         data = self._post(
             f"{spec.base_url}/messages",
@@ -167,11 +199,71 @@ class LLMClient:
         )
         blocks = data.get("content") or []
         text = "".join(b.get("text", "") for b in blocks if b.get("type") == "text")
-        return text, data.get("usage") or {}
+        return text, data.get("usage") or {}, str(data.get("stop_reason") or "")
 
 
 class _RetryableError(RuntimeError):
     pass
+
+
+def check_configuration(live: bool = True) -> int:
+    """Print which provider is configured, and prove the key works.
+
+    ``python -m src.llm``
+
+    Exists because "why is it still giving me extractive answers" is the first
+    question anyone asks after adding a key, and the answer is almost always a
+    misspelled variable name, a key in the wrong place, or a model id the
+    provider has retired. All three are visible here in one command.
+    """
+    from .config import DOTENV_LOADED, PROVIDER_NONE
+
+    settings = get_settings()
+    print("CareCompass provider check")
+    print("=" * 62)
+    if DOTENV_LOADED:
+        print(f".env supplied: {', '.join(DOTENV_LOADED)}")
+    else:
+        print(".env: not found or empty (fine if you use real env vars)")
+    print()
+
+    for provider in available_providers():
+        mark = "FOUND" if provider["configured"] else "  -  "
+        print(f"  [{mark}] {provider['env_var']:22s} {provider['label']}")
+    print()
+
+    if settings.provider == PROVIDER_NONE:
+        print("No key detected. The app still works and answers from retrieved")
+        print("passages. To enable generated answers, get a free key:")
+        for provider in available_providers():
+            if provider["signup_url"]:
+                print(f"  {provider['env_var']:22s} {provider['signup_url']}")
+        return 1
+
+    print(f"Selected provider : {settings.provider}")
+    print(f"Model             : {settings.model}")
+    if not live:
+        return 0
+
+    print("\nSending a test message...")
+    response = LLMClient(settings).chat(
+        "You are a test harness. Reply with exactly: ok",
+        [{"role": "user", "content": "Say ok"}],
+        # Generous on purpose: a reasoning model spends this budget thinking
+        # before it writes a word, and a too-small probe reports a false failure.
+        max_tokens=256,
+    )
+    if response.ok:
+        print(f"SUCCESS in {response.latency_ms} ms. Reply: {response.text[:60]!r}")
+        print("\nGenerated answers are enabled.")
+        return 0
+
+    print(f"FAILED: {response.error}")
+    print("\nCommon causes:")
+    print("  - key copied with a trailing space, or only partially")
+    print("  - the provider retired the default model: set CARECOMPASS_MODEL")
+    print("  - free-tier rate limit already reached for today")
+    return 2
 
 
 def available_providers() -> list[dict]:
@@ -187,3 +279,7 @@ def available_providers() -> list[dict]:
         }
         for spec in PROVIDER_REGISTRY.values()
     ]
+
+
+if __name__ == "__main__":  # pragma: no cover - operator tool
+    raise SystemExit(check_configuration())

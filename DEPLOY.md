@@ -19,21 +19,90 @@ starts. They share the engine, so there is nothing to keep in sync but a
 
 ## First: get a free model key
 
-The app runs without one, but "generated prose" needs one. Two have no credit
-card requirement at all:
+The app runs without one — it falls back to extractive answers from the corpus.
+A key is what turns it into a chatbot that writes prose.
 
-| Provider | Secret name | Free tier | Sign up |
+| Provider | Variable name | Free tier | Sign up |
 | --- | --- | --- | --- |
-| **Groq** (recommended) | `GROQ_API_KEY` | 30 req/min, ~1,000 req/day on `llama-3.3-70b-versatile`. Very fast. | <https://console.groq.com/keys> |
-| **Cerebras** | `CEREBRAS_API_KEY` | Generous free tier, also no card | <https://cloud.cerebras.ai/> |
-| **Google Gemini** | `GEMINI_API_KEY` | Free tier on `gemini-2.5-flash` | <https://aistudio.google.com/apikey> |
+| **Groq** (recommended) | `GROQ_API_KEY` | 30 req/min, ~1,000 req/day on `openai/gpt-oss-120b`. No credit card. | <https://console.groq.com/keys> |
+| **Cerebras** | `CEREBRAS_API_KEY` | Generous, no credit card | <https://cloud.cerebras.ai/> |
+| **Google Gemini** | `GEMINI_API_KEY` | Free tier on `gemini-flash-latest` | <https://aistudio.google.com/apikey> |
 | OpenAI / Anthropic / OpenRouter / HF | `OPENAI_API_KEY` etc. | Paid | — |
 
 The first key found wins, in the order above. Override the model with
 `CARECOMPASS_MODEL` if a provider retires a default.
 
-Groq's daily cap is the right size for a demo: enough for an interviewer to play
-with, not enough to be worth scraping.
+### Step 1 — create the key (about two minutes)
+
+1. Open <https://console.groq.com/keys>
+2. Sign in with Google or GitHub. No card, no billing setup.
+3. **Create API Key**, give it a name such as `carecompass`
+4. Copy it immediately — it starts with `gsk_` and is shown **once**. If you
+   lose it, delete that key and make another; there is no way to view it again.
+
+### Step 2 — put it where the code will find it
+
+There are three places, depending on where the app is running. Use whichever
+matches; you do not need more than one.
+
+**Locally, all three entry points** — create a file called `.env` in the project
+root:
+
+```
+GROQ_API_KEY=gsk_paste_your_real_key_here
+```
+
+No quotes, no spaces around the `=`, no `export`. `src/config.py` reads it at
+import, so `streamlit run streamlit_app.py`, `python app.py` and the tests all
+pick it up. `.env` is gitignored. Real environment variables take precedence
+over the file, so a shell export always wins.
+
+On Windows you can create it from PowerShell without opening an editor:
+
+```powershell
+Set-Content -Path .env -Value 'GROQ_API_KEY=gsk_paste_your_real_key_here'
+```
+
+**Streamlit Community Cloud** — the `.env` file is not deployed, and must not
+be. In the app's dashboard: **Manage app → Settings → Secrets**, then paste
+TOML and save:
+
+```toml
+GROQ_API_KEY = "gsk_paste_your_real_key_here"
+```
+
+Note the TOML syntax here: quotes and spaces around `=`, unlike the `.env` form.
+The app restarts by itself within a few seconds.
+
+**Render, Cloud Run, or a Hugging Face Gradio Space** — add it as an environment
+variable or **secret** in that platform's settings UI. On Hugging Face choose
+*secret*, not *variable*: variables are readable by anyone who can see the Space.
+
+### Step 3 — verify it works
+
+```bash
+python -m src.llm
+```
+
+This prints every provider, marks which variables were found, and then sends one
+real test message to the selected provider. `SUCCESS` means generated answers
+are live. A `401` means the key is wrong or truncated. A `404` on the model name
+means the provider retired the default — set `CARECOMPASS_MODEL` to a current
+one from their docs.
+
+In the running app, check the sidebar (Streamlit) or the header pill (Gradio).
+It flips from "No model key — extractive answers" to the provider and model
+name. Per answer, the decision trace shows `model-grounded` instead of
+`retrieval-extractive`.
+
+### Never do this
+
+- Do not commit `.env` or `.streamlit/secrets.toml`. Both are gitignored; run
+  `git status` before your first push and confirm neither is staged.
+- Do not put a key in the static browser build. It would ship to every visitor.
+  That build has no model layer precisely so the mistake is impossible.
+- If a key is ever exposed, delete it in the provider console and issue a new
+  one. Rotating takes ten seconds; a leaked key on a public repo does not.
 
 ---
 
@@ -81,7 +150,7 @@ GROQ_API_KEY = "gsk_your_key_here"
 ```
 
 Save. The app restarts on its own. The sidebar pill switches from
-"No model key — extractive answers" to "Groq · llama-3.3-70b-versatile", which is
+"No model key — extractive answers" to "Groq · openai/gpt-oss-120b", which is
 the quickest way to confirm it took.
 
 `.streamlit/secrets.toml.example` in the repository has the full list. Never
@@ -242,7 +311,7 @@ free CPU tier's memory.
 ## Before any deploy
 
 ```bash
-python -m pytest tests -q      # 64 tests
+python -m pytest tests -q      # 66 tests
 python -m eval.run_eval        # non-zero exit if emergency recall drops below 100%
 python build_space.py          # regenerate the static bundle
 ```

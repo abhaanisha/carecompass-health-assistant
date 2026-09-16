@@ -9,7 +9,7 @@ process environment.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 APP_NAME = "CareCompass"
@@ -28,6 +28,10 @@ LOG_DIR = Path(os.getenv("CARECOMPASS_LOG_DIR", str(ROOT / "logs")))
 EVENT_LOG = LOG_DIR / "events.jsonl"
 
 
+#: Model ids drift: vendors retire them, sometimes only for new accounts, and a
+#: pinned default eventually 404s. ``python -m src.llm`` surfaces that in one
+#: command, and every provider here exposes a ``/models`` endpoint listing what
+#: a given key can actually reach. ``CARECOMPASS_MODEL`` overrides any default.
 @dataclass(frozen=True)
 class ProviderSpec:
     """How to talk to one model vendor.
@@ -45,6 +49,9 @@ class ProviderSpec:
     default_model: str
     api: str = "openai"
     signup_url: str = ""
+    #: Extra request-body fields this vendor needs. Applied by llm.py, which
+    #: drops any that the selected model does not support.
+    extra_body: dict = field(default_factory=dict)
 
 
 PROVIDER_REGISTRY: dict[str, ProviderSpec] = {
@@ -53,8 +60,12 @@ PROVIDER_REGISTRY: dict[str, ProviderSpec] = {
         label="Groq",
         env_var="GROQ_API_KEY",
         base_url="https://api.groq.com/openai/v1",
-        default_model="llama-3.3-70b-versatile",
+        default_model="openai/gpt-oss-120b",
         signup_url="https://console.groq.com/keys",
+        # Every model Groq currently serves is a reasoning model, and reasoning
+        # tokens are charged against max_tokens. Left alone, a reply can spend
+        # its entire budget thinking and come back empty.
+        extra_body={"reasoning_effort": "low"},
     ),
     "cerebras": ProviderSpec(
         key="cerebras",
@@ -71,7 +82,10 @@ PROVIDER_REGISTRY: dict[str, ProviderSpec] = {
         # Gemini exposes an OpenAI-compatible surface, so it needs no new
         # transport -- only a base URL and a model name.
         base_url="https://generativelanguage.googleapis.com/v1beta/openai",
-        default_model="gemini-2.5-flash",
+        # A rolling alias rather than a pinned version: Google retires specific
+        # Gemini builds for new users fairly often, and a portfolio demo that
+        # breaks silently six months from now is worse than one model behind.
+        default_model="gemini-flash-latest",
         signup_url="https://aistudio.google.com/apikey",
     ),
     "openai": ProviderSpec(
@@ -131,6 +145,48 @@ SUPPORTED_LANGUAGES = {
     "hi": "Hindi",
     "bn": "Bengali",
 }
+
+
+def load_dotenv(path: Path | None = None) -> list[str]:
+    """Read a local ``.env`` into the environment. Returns the names it set.
+
+    Hand-rolled rather than depending on ``python-dotenv``: it is twenty lines,
+    and every dependency in this project has to earn its place in a 512 MB free
+    instance.
+
+    Real environment variables always win — the file only fills in what is
+    missing — so a Space secret or a shell export is never silently overridden
+    by a stale file someone left in their working copy.
+    """
+    target = Path(path or ROOT / ".env")
+    if not target.exists():
+        return []
+
+    applied: list[str] = []
+    try:
+        lines = target.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        if line.startswith("export "):
+            line = line[len("export "):]
+        name, _, value = line.partition("=")
+        name = name.strip()
+        value = value.strip().strip('"').strip("'")
+        if not name or not value:
+            continue
+        if name not in os.environ:
+            os.environ[name] = value
+            applied.append(name)
+    return applied
+
+
+#: Loaded once, at import, so every entry point picks it up without ceremony.
+DOTENV_LOADED = load_dotenv()
 
 
 def _flag(name: str, default: bool = False) -> bool:

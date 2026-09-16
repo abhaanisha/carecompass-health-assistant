@@ -227,9 +227,9 @@ It runs with no configuration. To enable generated answers, set any one of:
 
 | Variable | Provider | Default model | Free tier |
 | --- | --- | --- | --- |
-| `GROQ_API_KEY` | Groq | `llama-3.3-70b-versatile` | Yes, no card |
+| `GROQ_API_KEY` | Groq | `openai/gpt-oss-120b` | Yes, no card |
 | `CEREBRAS_API_KEY` | Cerebras | `llama-3.3-70b` | Yes, no card |
-| `GEMINI_API_KEY` | Google Gemini | `gemini-2.5-flash` | Yes |
+| `GEMINI_API_KEY` | Google Gemini | `gemini-flash-latest` | Yes |
 | `OPENAI_API_KEY` | OpenAI | `gpt-4o-mini` | No |
 | `ANTHROPIC_API_KEY` | Anthropic | `claude-sonnet-5` | No |
 | `OPENROUTER_API_KEY` | OpenRouter | `meta-llama/llama-3.3-70b-instruct` | Some models |
@@ -276,7 +276,7 @@ data/
 eval/
   goldset.yaml              52 labelled cases
   run_eval.py               metrics, failure list, CI gate
-tests/                      64 tests covering safety, triage, retrieval, pipeline, bundle
+tests/                      66 tests covering safety, triage, retrieval, pipeline, bundle
 ```
 
 The rules live in YAML on purpose. A clinician reviewing whether "fever in an
