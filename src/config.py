@@ -14,7 +14,10 @@ from pathlib import Path
 
 APP_NAME = "CareCompass"
 APP_TAGLINE = "Grounded health guidance with a safety floor you can audit"
-VERSION = "1.0.0"
+#: Bump on any change that alters the shape of objects held in a UI cache.
+#: Streamlit keys its resource cache on this, so a deploy cannot leave a stale
+#: assistant behind.
+VERSION = "1.1.0"
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"

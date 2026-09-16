@@ -1,6 +1,6 @@
 # CareCompass evaluation
 
-- Run: `2026-09-16T21:52:56+00:00`
+- Run: `2026-09-16T22:02:55+00:00`
 - Cases: **52**
 - Retrieval: `hybrid`
 - Model: `retrieval-only` (deterministic paths only)

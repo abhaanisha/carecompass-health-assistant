@@ -1,5 +1,5 @@
 {
-  "ran_at": "2026-09-16T21:52:56+00:00",
+  "ran_at": "2026-09-16T22:02:55+00:00",
   "cases": 52,
   "used_model": false,
   "provider": "retrieval-only",
@@ -49,7 +49,7 @@
       "mode": "deterministic-emergency",
       "cited": 0,
       "dose_leak": false,
-      "latency_ms": 45,
+      "latency_ms": 42,
       "passed": true
     },
     {
@@ -73,7 +73,7 @@
       "mode": "deterministic-emergency",
       "cited": 0,
       "dose_leak": false,
-      "latency_ms": 8,
+      "latency_ms": 6,
       "passed": true
     },
     {
@@ -95,7 +95,7 @@
       "mode": "deterministic-emergency",
       "cited": 0,
       "dose_leak": false,
-      "latency_ms": 9,
+      "latency_ms": 6,
       "passed": true
     },
     {
@@ -163,7 +163,7 @@
       "mode": "retrieval-extractive",
       "cited": 3,
       "dose_leak": false,
-      "latency_ms": 6,
+      "latency_ms": 8,
       "passed": true
     },
     {
@@ -210,7 +210,7 @@
       "mode": "deterministic-emergency",
       "cited": 0,
       "dose_leak": false,
-      "latency_ms": 6,
+      "latency_ms": 8,
       "passed": true
     },
     {
@@ -233,7 +233,7 @@
       "mode": "deterministic-emergency",
       "cited": 0,
       "dose_leak": false,
-      "latency_ms": 6,
+      "latency_ms": 8,
       "passed": true
     },
     {
@@ -257,7 +257,7 @@
       "mode": "deterministic-emergency",
       "cited": 0,
       "dose_leak": false,
-      "latency_ms": 5,
+      "latency_ms": 7,
       "passed": true
     },
     {
@@ -280,7 +280,7 @@
       "mode": "retrieval-extractive",
       "cited": 3,
       "dose_leak": false,
-      "latency_ms": 6,
+      "latency_ms": 9,
       "passed": true
     },
     {
@@ -300,7 +300,7 @@
       "mode": "retrieval-extractive",
       "cited": 3,
       "dose_leak": false,
-      "latency_ms": 7,
+      "latency_ms": 8,
       "passed": true
     },
     {
@@ -322,7 +322,7 @@
       "mode": "deterministic-emergency",
       "cited": 0,
       "dose_leak": false,
-      "latency_ms": 7,
+      "latency_ms": 8,
       "passed": true
     },
     {
@@ -365,7 +365,7 @@
       "mode": "deterministic-emergency",
       "cited": 0,
       "dose_leak": false,
-      "latency_ms": 8,
+      "latency_ms": 9,
       "passed": true
     },
     {
@@ -408,7 +408,7 @@
       "mode": "retrieval-extractive",
       "cited": 3,
       "dose_leak": false,
-      "latency_ms": 7,
+      "latency_ms": 6,
       "passed": false
     },
     {
@@ -427,7 +427,7 @@
       "mode": "retrieval-extractive",
       "cited": 3,
       "dose_leak": false,
-      "latency_ms": 8,
+      "latency_ms": 5,
       "passed": true
     },
     {
@@ -447,7 +447,7 @@
       "mode": "retrieval-extractive",
       "cited": 3,
       "dose_leak": false,
-      "latency_ms": 8,
+      "latency_ms": 5,
       "passed": true
     },
     {
@@ -470,7 +470,7 @@
       "mode": "deterministic-emergency",
       "cited": 0,
       "dose_leak": false,
-      "latency_ms": 9,
+      "latency_ms": 6,
       "passed": true
     },
     {
@@ -493,7 +493,7 @@
       "mode": "retrieval-extractive",
       "cited": 3,
       "dose_leak": false,
-      "latency_ms": 8,
+      "latency_ms": 6,
       "passed": true
     },
     {
@@ -561,7 +561,7 @@
       "mode": "deterministic-emergency",
       "cited": 0,
       "dose_leak": false,
-      "latency_ms": 7,
+      "latency_ms": 6,
       "passed": true
     },
     {
@@ -583,7 +583,7 @@
       "mode": "deterministic-emergency",
       "cited": 0,
       "dose_leak": false,
-      "latency_ms": 7,
+      "latency_ms": 6,
       "passed": true
     },
     {
@@ -668,7 +668,7 @@
       "mode": "retrieval-extractive",
       "cited": 3,
       "dose_leak": false,
-      "latency_ms": 7,
+      "latency_ms": 8,
       "passed": true
     },
     {
@@ -800,7 +800,7 @@
       "mode": "retrieval-extractive",
       "cited": 3,
       "dose_leak": false,
-      "latency_ms": 5,
+      "latency_ms": 8,
       "passed": true
     },
     {
@@ -820,7 +820,7 @@
       "mode": "retrieval-extractive",
       "cited": 3,
       "dose_leak": false,
-      "latency_ms": 7,
+      "latency_ms": 8,
       "passed": true
     },
     {
@@ -842,7 +842,7 @@
       "mode": "retrieval-extractive",
       "cited": 3,
       "dose_leak": false,
-      "latency_ms": 6,
+      "latency_ms": 5,
       "passed": true
     },
     {
@@ -866,7 +866,7 @@
       "mode": "retrieval-extractive",
       "cited": 3,
       "dose_leak": false,
-      "latency_ms": 7,
+      "latency_ms": 6,
       "passed": true
     },
     {
@@ -1013,7 +1013,7 @@
       "mode": "retrieval-extractive",
       "cited": 3,
       "dose_leak": false,
-      "latency_ms": 6,
+      "latency_ms": 5,
       "passed": true
     },
     {
@@ -1035,7 +1035,7 @@
       "mode": "retrieval-extractive",
       "cited": 3,
       "dose_leak": false,
-      "latency_ms": 9,
+      "latency_ms": 7,
       "passed": true
     },
     {
@@ -1055,7 +1055,7 @@
       "mode": "retrieval-extractive",
       "cited": 3,
       "dose_leak": false,
-      "latency_ms": 8,
+      "latency_ms": 6,
       "passed": true
     },
     {
@@ -1075,7 +1075,7 @@
       "mode": "retrieval-extractive",
       "cited": 3,
       "dose_leak": false,
-      "latency_ms": 8,
+      "latency_ms": 6,
       "passed": true
     },
     {
@@ -1098,7 +1098,7 @@
       "mode": "retrieval-extractive",
       "cited": 3,
       "dose_leak": false,
-      "latency_ms": 8,
+      "latency_ms": 5,
       "passed": true
     },
     {
@@ -1120,7 +1120,7 @@
       "mode": "retrieval-extractive",
       "cited": 0,
       "dose_leak": false,
-      "latency_ms": 8,
+      "latency_ms": 5,
       "passed": true
     },
     {

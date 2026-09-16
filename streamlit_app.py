@@ -118,16 +118,22 @@ st.markdown(CSS, unsafe_allow_html=True)
 
 
 @st.cache_resource(show_spinner="Loading knowledge base and safety rules…")
-def get_assistant() -> CareCompass:
+def get_assistant(version: str = VERSION) -> CareCompass:
     """Built once per container, not once per rerun.
 
     Streamlit re-executes this file top to bottom on every interaction, so
     without the cache the corpus would be re-indexed on every keystroke.
+
+    ``version`` is part of the cache key and is never read. Without it, a
+    deploy that reloads the script while keeping the cache alive leaves a stale
+    assistant object behind — one whose class predates the new code. That is
+    not hypothetical: it shipped, and the symptom was an AttributeError on a
+    field the deployed UI had every right to expect.
     """
     return CareCompass()
 
 
-ASSISTANT = get_assistant()
+ASSISTANT = get_assistant(VERSION)
 HEALTH = ASSISTANT.health()
 
 
@@ -250,15 +256,20 @@ def render_chat() -> None:
                 session_id=st.session_state.session_id,
             )
 
+        # Tolerate an Answer from an older build that has no `body` field, so a
+        # half-applied deploy degrades to a slightly longer message rather than
+        # a traceback in the user's face.
+        body = getattr(result, "body", None) or result.text
+
         # An emergency appears at once. Everything else streams, because a wall
         # of text arriving instantly reads as canned — and because the one case
         # where a reader must not wait is the one already computed in
         # single-digit milliseconds.
         if result.mode in (MODE_EMERGENCY, MODE_CRISIS):
-            st.markdown(result.body)
+            st.markdown(body)
         else:
             def stream():
-                for token in result.body.split(" "):
+                for token in body.split(" "):
                     yield token + " "
                     time.sleep(0.012)
 
@@ -279,7 +290,7 @@ def render_chat() -> None:
         render_audit(meta)
 
     history.append({"role": "user", "content": message})
-    history.append({"role": "assistant", "content": result.body, "meta": meta})
+    history.append({"role": "assistant", "content": body, "meta": meta})
 
 
 # --------------------------------------------------------------------------

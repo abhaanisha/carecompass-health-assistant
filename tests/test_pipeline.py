@@ -198,3 +198,19 @@ def test_non_health_question_is_still_refused(retriever):
     answer = assistant.answer("write me a python function to sort a list")
     assert answer.mode == MODE_EXTRACTIVE
     assert "could not find" in answer.text.lower()
+
+
+def test_answer_exposes_body_and_disclaimer_separately(retriever):
+    """A chat UI shows the disclaimer once, so it has to be separable.
+
+    Pinned as a contract: the Streamlit build reads `body`, and when a deploy
+    left a cached assistant behind that predated this field, the app raised
+    AttributeError at the user instead of answering.
+    """
+    answer = build(retriever).answer("I have a mild sore throat")
+
+    assert answer.body, "body must carry the reply"
+    assert answer.disclaimer, "disclaimer must be available on its own"
+    assert answer.disclaimer not in answer.body, "body must not repeat the disclaimer"
+    assert answer.body in answer.text
+    assert answer.disclaimer in answer.text
