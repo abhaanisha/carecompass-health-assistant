@@ -122,18 +122,75 @@ user message
     │                           Rank Fusion; lay-term lexicon expands
     │                           "loose motion" → diarrhoea, ORS, dehydration
     │
-    ├─▶ 4a. EMERGENCY or self-harm → fixed card. No model is called.
+    ├─▶ 3b. web tier            only if the corpus did not answer confidently,
+    │                           and only for a specific question. An allow-list
+    │                           of public-health bodies, not a web search.
+    │                           Passages come back tagged [W1]…[Wn]
+    │
+    ├─▶ 4a. EMERGENCY or self-harm → fixed card. No model is called,
+    │        and no network call is made.
     │
     ├─▶ 4b. a symptom too vague to match anything → ask what a clinician would
     │        ask, in the user's language, rather than refuse
     │
     └─▶ 4c. otherwise → model answers from the retrieved passages only,
-                        must cite [S1]…[Sn], may raise urgency
+                        must cite [S1]…[Sn] and [W1]…[Wn], may raise urgency
                         ↓ on any failure
                         extractive answer from the same passages
     │
-    └─▶ 5. citation validation → disclaimer → redacted event log
+    └─▶ 5. citation validation → follow-up suggestions → disclaimer
+           → redacted event log
 ```
+
+### The web tier
+
+The curated corpus covers eleven areas well and nothing else at all. That is
+honest, but it means a question about shingles, gout or thyroid used to fall
+through to "I could not find anything in my knowledge base" — or worse, get
+answered from a near-miss passage with no citation, because the grounding check
+is tuned to be generous about what counts as in scope.
+
+So there is a second shelf. When the corpus does not answer confidently, the
+question goes to an allow-list of public-health bodies — WHO, MoHFW, ICMR, NHS,
+CDC, MedlinePlus — and what comes back enters the pipeline exactly as corpus
+text does: numbered, citable passages with a URL and a retrieval timestamp,
+tagged `[W1]` rather than `[S1]` so the reader can always tell reviewed content
+from content fetched a second ago.
+
+Four things keep this from undoing the rest of the design:
+
+- **It is an allow-list, not a search of the open web.** A blog, a forum or a
+  supplement seller cannot become a source, whatever a search engine returns.
+  The host is re-checked after redirects.
+- **It never touches the safety-critical path.** Emergency and self-harm cards
+  are produced before the tier is consulted, so no network call can sit between
+  a user and an ambulance number.
+- **It cannot lower urgency.** The triage floor comes from the user's own
+  message, computed before any retrieval.
+- **It is additive.** No network, a slow host, a malformed payload, a missing
+  `requests` — every failure ends with the corpus answering alone.
+
+It needs no API key: MedlinePlus (US National Library of Medicine) publishes a
+free, unauthenticated search service that returns full topic summaries, so the
+default path is one HTTP request and no HTML scraping. A Tavily, Brave or
+Serper key, if present, widens the reach to the rest of the allow-list.
+
+`CARECOMPASS_WEB_MODE=off` disables it entirely; `always` consults it on every
+non-emergency turn.
+
+### Follow-up suggestions
+
+Each answer ends with two or three things the user might reasonably ask next,
+rendered as chips under the latest reply. The model writes them in the user's
+own voice and in the reply language, emitted as a `[[FOLLOWUPS: … | … ]]` tag
+that is stripped before display. When no model is configured, or when one
+forgets the tag, they are derived from the triage level and the retrieved
+heading instead — keyed off the level rather than the topic, because "should I
+go to a hospital or a clinic?" is worth more to someone who has just been told
+to seek care today than an offer to explain the condition further.
+
+They are never shown on the emergency or crisis path. Nothing on that card
+should invite a next question instead of a phone call.
 
 ### Retrieval
 
@@ -300,6 +357,7 @@ src/
   triage.py                 5 urgency levels, rule floor, model-merge logic
   prompts.py                system prompt + the fixed emergency and crisis cards
   llm.py                    provider-agnostic HTTP client, retry, graceful failure
+  web.py                    the web tier: domain allow-list, MedlinePlus, HTML→text
   pipeline.py               orchestration: one call in, one audited answer out
   analytics.py              JSONL event log and the Insights metrics
   language.py               script-based language detection
@@ -311,7 +369,8 @@ data/
 eval/
   goldset.yaml              52 labelled cases
   run_eval.py               metrics, failure list, CI gate
-tests/                      81 tests covering safety, triage, retrieval, pipeline, bundle, detector
+tests/                      110 tests covering safety, triage, retrieval, pipeline,
+                            the web tier and its guards, follow-ups, bundle, detector
 ```
 
 The rules live in YAML on purpose. A clinician reviewing whether "fever in an
@@ -380,3 +439,5 @@ knowledge base. It does not diagnose, prescribe, or replace a qualified
 clinician. In an emergency, call **112**.
 
 MIT licensed. Built as a portfolio project.
+
+**Abha Singh Sardar**, IISc — [abhaanisha.github.io](https://abhaanisha.github.io/)

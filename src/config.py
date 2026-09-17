@@ -17,7 +17,7 @@ APP_TAGLINE = "Grounded health guidance with a safety floor you can audit"
 #: Bump on any change that alters the shape of objects held in a UI cache.
 #: Streamlit keys its resource cache on this, so a deploy cannot leave a stale
 #: assistant behind.
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
@@ -199,6 +199,24 @@ def _flag(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+WEB_MODES = ("fallback", "always", "off")
+
+
+def _web_mode() -> str:
+    """How eagerly the web tier is consulted.
+
+    Default is ``fallback``: the curated corpus is reviewed content and the web
+    is not, so the web is what the assistant reaches for when its own shelf is
+    empty — not a co-equal source consulted on every turn.
+    """
+    raw = (os.getenv("CARECOMPASS_WEB_MODE") or "").strip().lower()
+    if raw in WEB_MODES:
+        return raw
+    if _flag("CARECOMPASS_DISABLE_WEB", False):
+        return "off"
+    return "fallback"
+
+
 def detect_provider() -> str:
     """Pick a vendor from the environment.
 
@@ -230,6 +248,12 @@ class Settings:
     timeout_s: int
     log_events: bool
     show_debug: bool
+    #: ``fallback`` (default) consults the web tier only when the curated
+    #: corpus fails to ground the question, ``always`` consults it on every
+    #: non-emergency turn, ``off`` never does. See :mod:`src.web`.
+    web_mode: str
+    web_top_k: int
+    web_timeout_s: int
 
     @property
     def spec(self) -> ProviderSpec | None:
@@ -268,6 +292,12 @@ def get_settings() -> Settings:
         timeout_s=int(os.getenv("CARECOMPASS_TIMEOUT", "45")),
         log_events=not _flag("CARECOMPASS_DISABLE_LOGGING", False),
         show_debug=_flag("CARECOMPASS_DEBUG", False),
+        web_mode=_web_mode(),
+        web_top_k=int(os.getenv("CARECOMPASS_WEB_TOP_K", "4")),
+        # Deliberately shorter than the model timeout. A supporting source is
+        # worth about four seconds of a user's patience and not a second more;
+        # past that the corpus answer alone is the better product.
+        web_timeout_s=int(os.getenv("CARECOMPASS_WEB_TIMEOUT", "8")),
     )
 
 

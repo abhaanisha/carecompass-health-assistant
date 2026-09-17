@@ -12,11 +12,14 @@ Two things live here:
 
 from __future__ import annotations
 
+import re
+
 from .config import MEDICAL_DISCLAIMER
 from .language import LANGUAGE_NAMES
 from .retrieval import RetrievalResult
 from .safety import SafetyReport
 from .triage import LEVELS, TriageResult, Urgency
+from .web import WebResult
 
 SYSTEM_TEMPLATE = """You are {app_name}, a health information assistant for an Indian audience.
 
@@ -27,11 +30,18 @@ A careful, plain-spoken guide that helps people understand a health concern and 
 Reply entirely in {language_name}. Match the user's register: simple, warm, concrete. Do not mix languages unless the user did.
 
 ## Grounding rules
-- Answer using ONLY the numbered sources below. They are the curated knowledge base.
+- Answer using ONLY the numbered sources below. There are two kinds and they are not equal:
+  **[S] sources** are the curated, reviewed knowledge base. Prefer them, always.
+  **[W] sources** were fetched just now from named public-health bodies (WHO, NHS, CDC,
+  MedlinePlus, India's MoHFW). Use them for what the [S] sources do not cover, and say
+  in the reply that the point comes from that body — "WHO guidance says…" — so the reader
+  knows which shelf it came off. If an [S] and a [W] source disagree, follow the [S] one
+  and note the disagreement rather than silently picking a side.
 - **Cite inline, in every reply.** Put the source tag at the end of each sentence or
   bullet that states a fact, like this:
       - Give small sips frequently rather than large amounts at once. [S2]
       - A cough lasting more than two weeks should be checked for TB. [S1][S3]
+      - The NHS lists sudden one-sided facial droop as a stroke sign. [W2]
   An answer with no [S] tag at all is a failed answer, even if the content is correct.
   Tags are the reader's only way to check you, and they are validated after you reply.
 - If the sources do not cover the question, say plainly that this is outside what you can advise on, and point to the kind of clinician who can help. Never fill a gap with recalled medical knowledge.
@@ -55,13 +65,26 @@ Write your answer consistent with that level. If the user's message contains som
 - Then a clearly marked section of specific warning signs that mean "seek care now", drawn from the sources.
 - Close with the single most useful next step.
 - Keep it under 250 words. Use markdown. Never use a table.
+
+## Follow-up suggestions
+After your answer, add a line of the form:
+
+    [[FOLLOWUPS: first question | second question | third question]]
+
+Two or three, each under nine words, written in the user's own voice and in
+{language_name} — what *they* would type next, not what you would ask them.
+They must be answerable from the kind of material in the sources. Make them
+specific to what was just said: after an answer about a child's diarrhoea,
+"How do I make ORS at home?" is useful and "Tell me more" is not. If the
+user's next step is obviously to seek care, one of them should help them do
+that. The line is stripped before display, so it costs the reader nothing.
 {restricted_block}
 ## Sources
 {sources}
 
-## Before you send, check all three
-Measured behaviour, not a formality: these are the two instructions most often dropped,
-and both are validated after you reply.
+## Before you send, check all four
+Measured behaviour, not a formality: these are the instructions most often dropped,
+and each is validated after you reply.
 
 1. **Citations.** Does the reply contain at least one [S] tag, and does every factual
    bullet carry one? If not, add them now. An uncited answer cannot be checked by the
@@ -69,7 +92,9 @@ and both are validated after you reply.
 2. **No invented specifics.** Does every number, threshold and phone number appear
    verbatim in a source above? If a detail is not there, cut it rather than recalling it.
    No doses, ever.
-3. **The tag.** Is the very last line of your reply `[[URGENCY: LEVEL]]`, on its own,
+3. **Follow-ups.** Is there a `[[FOLLOWUPS: … | … | …]]` line, with two or three
+   short questions in the user's voice?
+4. **The tag.** Is the very last line of your reply `[[URGENCY: LEVEL]]`, on its own,
    with LEVEL one of INFO, SELF_CARE, ROUTINE, URGENT, EMERGENCY? It is stripped before
    display, so it costs the reader nothing and its absence loses the urgency check.
 """
@@ -79,6 +104,14 @@ RESTRICTED_TEMPLATE = """
 {items}
 Handle it exactly as described. Decline the restricted part warmly and briefly, without lecturing, then give the user the most useful thing you can offer instead.
 """
+
+WEB_ONLY_NOTE = (
+    "The curated knowledge base did not cover this question, so the [W] sources below "
+    "were fetched just now from public-health bodies. Answer from them, and open the "
+    "reply by saying plainly that this one is outside the curated knowledge base and "
+    "comes from those bodies instead. Name the body for each claim. Everything else — "
+    "no diagnosis, no doses, no invented numbers — applies unchanged."
+)
 
 NO_CONTEXT_NOTE = (
     "No source in the knowledge base matched this question closely. Say so directly, "
@@ -98,7 +131,8 @@ Ask at most four, as short bullets. Under 120 words. Warm and direct, no preambl
 Finish with the exception that overrides all of it: if the symptom is severe and came on
 suddenly, involves the chest, or comes with breathlessness, confusion, fainting or heavy
 bleeding, they should call 112 now rather than answering questions.
-Do not cite sources for a clarifying question; there is nothing to cite yet."""
+Do not cite sources for a clarifying question; there is nothing to cite yet.
+Skip the [[FOLLOWUPS]] line this turn — you are already the one asking."""
 
 
 def format_sources(retrieval: RetrievalResult) -> str:
@@ -115,6 +149,55 @@ def format_sources(retrieval: RetrievalResult) -> str:
     return "\n\n".join(blocks)
 
 
+def format_web_sources(web: WebResult | None) -> str:
+    """Render fetched passages as [W] sources, timestamped.
+
+    The retrieval date is in the block on purpose. A model that can see how
+    fresh a passage is writes more carefully about it than one handed an
+    undated wall of text, and the same line is what the reader sees in the
+    sources panel, so the two never disagree.
+    """
+    if not web or not web.passages:
+        return ""
+    blocks = []
+    for i, passage in enumerate(web.passages, start=1):
+        blocks.append(
+            f"[W{i}] {passage.title} — {passage.heading}\n"
+            f"(published by {passage.site}; {passage.url}; "
+            f"retrieved {passage.retrieved_at})\n"
+            f"{passage.text}"
+        )
+    return "\n\n".join(blocks)
+
+
+_FOLLOWUP_RE = re.compile(
+    r"\[\[\s*FOLLOW[-_ ]?UPS?\s*:\s*(.+?)\s*\]\]", re.IGNORECASE | re.DOTALL
+)
+
+
+def parse_followups(answer: str, limit: int = 3) -> tuple[list[str], str]:
+    """Pull the ``[[FOLLOWUPS: a | b | c]]`` line out of a reply.
+
+    Returns the suggestions and the reply with the tag removed. Mirrors
+    ``triage.parse_level_tag``: a model that forgets the tag costs the reader a
+    convenience, never an answer, so a miss is silent and returns ``[]``.
+    """
+    match = _FOLLOWUP_RE.search(answer or "")
+    if not match:
+        return [], (answer or "").strip()
+
+    cleaned = (answer[: match.start()] + answer[match.end():]).strip()
+    raw = match.group(1).replace("\n", " ")
+    items: list[str] = []
+    for part in re.split(r"\s*[|;]\s*", raw):
+        part = part.strip().strip('"\'').lstrip("-*0123456789. ").strip()
+        # A model occasionally answers the follow-up instead of posing it.
+        # A paragraph is not a chip.
+        if 8 <= len(part) <= 90 and part.lower() not in {i.lower() for i in items}:
+            items.append(part)
+    return items[:limit], cleaned
+
+
 def build_system_prompt(
     *,
     app_name: str,
@@ -122,6 +205,7 @@ def build_system_prompt(
     triage: TriageResult,
     safety: SafetyReport,
     retrieval: RetrievalResult,
+    web: WebResult | None = None,
     vague: bool = False,
 ) -> str:
     meta = LEVELS[triage.level]
@@ -133,10 +217,18 @@ def build_system_prompt(
         restricted_block = RESTRICTED_TEMPLATE.format(items=items)
 
     sources = format_sources(retrieval)
+
+    web_block = format_web_sources(web)
+    if web_block:
+        sources = f"{sources}\n\n{web_block}"
+
     if vague:
         sources = f"{CLARIFY_NOTE}\n\n{sources}"
-    elif not retrieval.grounded:
+    elif not retrieval.grounded and not web_block:
+        # Nothing on either shelf. Saying so is the answer.
         sources = f"{NO_CONTEXT_NOTE}\n\n{sources}"
+    elif not retrieval.grounded:
+        sources = f"{WEB_ONLY_NOTE}\n\n{sources}"
 
     return SYSTEM_TEMPLATE.format(
         app_name=app_name,
