@@ -343,7 +343,7 @@ Deployment to Hugging Face Spaces is in [DEPLOY.md](DEPLOY.md).
 ## Layout
 
 ```
-streamlit_app.py            Streamlit front end — streamed answers, free hosting
+streamlit_app.py            Streamlit front end — Disha, the assistant persona
 app.py                      Gradio front end
 app_lite.py                 browser front end — no pandas, no model layer
 build_space.py              bundles everything into space/index.html for a Static Space

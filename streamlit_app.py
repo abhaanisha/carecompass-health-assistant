@@ -64,12 +64,26 @@ from src.config import APP_NAME, EVAL_DIR, SUPPORTED_LANGUAGES, VERSION
 from src.pipeline import MODE_CRISIS, MODE_EMERGENCY, CareCompass
 from src.triage import LEVELS, Urgency
 
+#: The assistant's name, separate from the product's. "Disha" (दिशा / দিশা)
+#: means *direction* in Hindi and Bengali — which is what a compass gives you
+#: and, more to the point, what this thing actually does: it does not diagnose,
+#: it tells you which way to go and how soon. One word, no honorific, and it
+#: reads the same in all three languages the app answers in.
+BOT_NAME = "Disha"
+
 AUTHOR = "Abha Singh Sardar"
 AUTHOR_AFFILIATION = "IISc"
 AUTHOR_URL = "https://abhaanisha.github.io/"
 
+#: Disha gets the brand mark; the reader keeps Streamlit's default avatar.
+#: That asymmetry is load-bearing, not laziness: passing a custom avatar makes
+#: Streamlit drop the `stChatMessageAvatarUser` test id, and that id is the
+#: only stable way to tell the two roles apart in CSS — the rest of the markup
+#: differs by an emotion-hash class that changes between releases.
+AVATARS = {"assistant": "🧭", "user": None}
+
 st.set_page_config(
-    page_title=f"{APP_NAME} — health guidance",
+    page_title=f"{APP_NAME} — {BOT_NAME}, your health guide",
     page_icon="🧭",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -122,22 +136,25 @@ SUGGESTIONS = [
 
 CSS = """
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;650&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;650&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap');
 
   :root {
-      --cc-ink:      #101a24;
-      --cc-body:     #2c3a48;
-      --cc-muted:    #64798c;
-      --cc-faint:    #8fa3b4;
-      --cc-line:     #e2e9ef;
-      --cc-line-soft:#eef3f7;
+      --cc-ink:      #14231f;
+      --cc-body:     #33443f;
+      --cc-muted:    #64786f;
+      --cc-faint:    #94a79d;
+      --cc-line:     #e2e8e2;
+      --cc-line-soft:#edf1ec;
       --cc-surface:  #ffffff;
-      --cc-canvas:   #f7fafb;
-      --cc-accent:   #0b7a6b;
-      --cc-accent-d: #095f54;
-      --cc-tint:     #f0f8f6;
-      --cc-shadow:   0 1px 2px rgba(16,26,36,.04), 0 8px 24px -12px rgba(16,26,36,.14);
-      --cc-shadow-h: 0 1px 2px rgba(16,26,36,.05), 0 14px 32px -14px rgba(11,122,107,.30);
+      --cc-canvas:   #f4f6f1;
+      --cc-canvas-2: #eef2ea;
+      --cc-accent:   #2f6b4f;
+      --cc-accent-d: #1f4c38;
+      --cc-accent-l: #4a8b69;
+      --cc-tint:     #eef5f0;
+      --cc-shadow:   0 1px 2px rgba(20,35,31,.04), 0 10px 28px -14px rgba(20,35,31,.16);
+      --cc-shadow-m: 0 2px 6px rgba(20,35,31,.05), 0 18px 44px -20px rgba(20,35,31,.24);
+      --cc-bar:      4.6rem;
   }
 
   /* Set the face on the roots and the form elements that do not inherit, and
@@ -156,113 +173,132 @@ CSS = """
       font-family: 'Material Symbols Rounded' !important;
       font-feature-settings: 'liga' 1 !important;
   }
-  .stApp { background: var(--cc-canvas); }
 
-  /* Streamlit's chrome competes with the conversation. */
-  [data-testid="stToolbar"] { right: 0.5rem; }
+  /* A warm ground rather than a flat grey. Two very soft washes, so the card
+     surfaces have something to sit on and the page does not read as a form. */
+  .stApp {
+      background:
+        radial-gradient(70rem 40rem at 18% -10%, #ffffff 0%, rgba(255,255,255,0) 60%),
+        radial-gradient(60rem 36rem at 92% 8%, var(--cc-tint) 0%, rgba(238,245,240,0) 55%),
+        var(--cc-canvas);
+  }
+
   #MainMenu, footer { visibility: hidden; }
 
-  .block-container {
-      padding-top: 3.6rem; padding-bottom: 2rem; max-width: 46rem;
-  }
+  /* ---- the identity bar ------------------------------------------------
+     Streamlit's own header, restyled. It is the one strip that survives the
+     chat pane scrolling itself to the bottom, so it is where the assistant's
+     name belongs; anything rendered into the page column scrolls away. */
 
-  /* The page is a column with the footer pushed to its end.
-     Before this, the disclaimer and author line sat wherever the content
-     happened to stop — which on the empty state was directly under the
-     suggestion cards, stranded in the middle of the screen with a dead gap
-     beneath it and the input floating far below. `margin-top: auto` on the
-     last block is the whole fix: short conversations push the footer to the
-     bottom of the viewport, long ones let it come to rest after the final
-     message, which is where a footer belongs. */
-  /* Sized so the empty state does not overflow its scroll container. It is
-     not free height: the header sits above it and Streamlit's input dock is
-     an in-flow sibling below it, so anything taller makes the container
-     scroll — and because the chat pane scrolls itself to the bottom, the
-     overflow is taken off the *top*, sliding the hero under the header. */
-  .stMain .block-container > [data-testid="stVerticalBlock"] {
-      min-height: calc(100vh - 14rem);
+  [data-testid="stHeader"] {
+      height: var(--cc-bar);
+      background: linear-gradient(135deg, #35755a 0%, var(--cc-accent) 45%, var(--cc-accent-d) 100%);
+      box-shadow: 0 1px 0 rgba(20,35,31,.06), 0 10px 30px -18px rgba(20,35,31,.5);
+      border: none;
   }
-  /* The keyed container is not the flex child — Streamlit wraps it in an
-     stLayoutWrapper — so `margin-top: auto` has to go on the wrapper or it
-     silently resolves to 0 and the footer stays where the content stopped. */
-  [data-testid="stLayoutWrapper"]:has(> .st-key-cc-footer) { margin-top: auto; }
-  .st-key-cc-footer { padding-top: 1.5rem; }
-  /* Auto margins on both sides of the welcome block: the free space in the
-     column splits between them, so the hero sits in the optical centre
-     instead of hugging the header with a dead gap underneath. */
+  [data-testid="stHeader"]::before {
+      content: "🧭";
+      position: absolute; left: 1.15rem; top: 50%; transform: translateY(-50%);
+      width: 2.5rem; height: 2.5rem; border-radius: 12px;
+      display: grid; place-items: center; font-size: 1.2rem;
+      background: rgba(255,255,255,.16);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.22);
+  }
+  /* Two lines from one pseudo-element: `\\A` plus white-space: pre. */
+  [data-testid="stHeader"]::after {
+      content: "Disha — your health guide\\A Triage · cited sources · English, हिंदी, বাংলা";
+      white-space: pre;
+      position: absolute; left: 4.3rem; top: 50%; transform: translateY(-50%);
+      font-size: 0.97rem; font-weight: 600; letter-spacing: -0.012em;
+      line-height: 1.42; color: #ffffff; pointer-events: none;
+  }
+  /* Streamlit puts the expand chevron in this same corner, but only while the
+     sidebar is closed. Shift the lockup clear of it exactly when it is there,
+     rather than reserving the space permanently. */
+  [data-testid="stHeader"]:has([data-testid="stExpandSidebarButton"])::before { left: 3.6rem; }
+  [data-testid="stHeader"]:has([data-testid="stExpandSidebarButton"])::after  { left: 6.75rem; }
+  /* Streamlit's controls now sit on a dark ground. */
+  [data-testid="stHeader"] [data-testid="stIconMaterial"],
+  [data-testid="stHeader"] button { color: rgba(255,255,255,.92) !important; }
+  [data-testid="stHeader"] button:hover { background: rgba(255,255,255,.14) !important; }
+  [data-testid="stToolbar"] { right: 0.6rem; }
+  [data-testid="stToolbar"] * { color: rgba(255,255,255,.88) !important; }
+  [data-testid="stExpandSidebarButton"] { margin-left: 0.15rem; }
+
+  /* ---- the column ------------------------------------------------------ */
+
+  .block-container {
+      padding-top: calc(var(--cc-bar) + 1.2rem); padding-bottom: 3rem;
+      max-width: 47rem;
+  }
+  .stMain .block-container > [data-testid="stVerticalBlock"] {
+      min-height: calc(100vh - 17.2rem);
+  }
+  /* Auto margins top and bottom: the free space splits between them, so the
+     welcome panel sits in the optical centre instead of hugging the bar with
+     a dead gap underneath. */
   [data-testid="stLayoutWrapper"]:has(> .st-key-cc-welcome) {
       margin-top: auto; margin-bottom: auto;
   }
 
-  /* Short and narrow viewports: stop forcing the column taller than the
-     screen. The reserved height is what pushes the footer down on a roomy
-     display, but where the content already fills the screen it only creates
-     overflow — and because the chat pane scrolls itself to the bottom, that
-     overflow is taken off the top and slides the hero under the header. */
-  @media (max-height: 780px) {
-      .stMain .block-container > [data-testid="stVerticalBlock"] { min-height: 0; }
+  /* ---- welcome --------------------------------------------------------- */
+
+  .cc-welcome {
+      background: var(--cc-surface);
+      border: 1px solid var(--cc-line);
+      border-radius: 20px;
+      padding: 1.5rem 1.6rem 1.35rem;
+      box-shadow: var(--cc-shadow);
+      position: relative; overflow: hidden;
   }
-  @media (max-width: 640px) {
-      .stMain .block-container > [data-testid="stVerticalBlock"] { min-height: 0; }
-      .block-container { padding-top: 3.2rem; padding-left: 1rem; padding-right: 1rem; }
-      .cc-hero { margin: 1.5rem 0 1.4rem; }
-      .cc-hero h1 { font-size: 1.78rem; }
-      .cc-hero p { font-size: 0.88rem; }
-      .cc-mark { margin-bottom: 0.9rem; font-size: 0.66rem; }
-      [data-testid="stHeader"]::before { left: 3.1rem; font-size: 0.88rem; }
-      /* Two suggestions, not four. Stacked single-file on a phone the other
-         two push the hero off the top of the screen, and a starting point the
-         reader has to scroll up to find is not a starting point. */
-      .st-key-sg2, .st-key-sg3 { display: none; }
+  .cc-welcome::before {
+      content: ""; position: absolute; inset: 0 0 auto 0; height: 3px;
+      background: linear-gradient(90deg, var(--cc-accent-l), var(--cc-accent), #7fb08f);
+  }
+  .cc-greet {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 1.62rem; font-weight: 500; letter-spacing: -0.015em;
+      color: var(--cc-ink); margin: 0.15rem 0 0.5rem;
+  }
+  .cc-welcome p {
+      color: var(--cc-muted); font-size: 0.925rem; line-height: 1.62; margin: 0;
+      max-width: 36rem;
+  }
+  .cc-pills { display: flex; flex-wrap: wrap; gap: 0.42rem; margin-top: 1.05rem; }
+  .cc-pill {
+      font-size: 0.775rem; font-weight: 500; color: var(--cc-body);
+      background: var(--cc-tint); border: 1px solid #dcebe1;
+      padding: 0.3rem 0.68rem; border-radius: 999px; white-space: nowrap;
+  }
+  .cc-sub {
+      font-size: 0.735rem; font-weight: 600; letter-spacing: 0.085em;
+      text-transform: uppercase; color: var(--cc-faint);
+      margin: 1.5rem 0 0.55rem; text-align: center;
   }
 
-  /* ---- brand ----------------------------------------------------------- */
+  /* ---- suggestion cards ------------------------------------------------- */
 
-  /* In Streamlit's own fixed header, which is the one strip that survives the
-     chat container scrolling itself to the bottom. A brand rendered into the
-     page column instead just scrolls away — the first attempt at this sat at
-     y = -68px on load, present in the DOM and invisible to everyone. */
-  [data-testid="stHeader"] {
-      background: rgba(247,250,251,0.94);
-      backdrop-filter: saturate(160%) blur(10px);
-      border-bottom: 1px solid var(--cc-line-soft);
-      height: 3rem;
+  .st-key-cc-suggestions .stButton > button {
+      width: 100%; text-align: left; white-space: normal; height: 100%;
+      min-height: 3.3rem; padding: 0.78rem 0.95rem;
+      border-radius: 15px; border: 1px solid var(--cc-line);
+      background: var(--cc-surface); box-shadow: var(--cc-shadow);
+      color: var(--cc-ink); font-weight: 500; font-size: 0.875rem; line-height: 1.4;
+      transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
   }
-  [data-testid="stHeader"]::before {
-      content: "🧭  CareCompass";
-      position: absolute; left: 3.5rem; top: 50%; transform: translateY(-50%);
-      font-size: 0.95rem; font-weight: 650; letter-spacing: -0.02em;
-      color: var(--cc-ink); white-space: nowrap; pointer-events: none;
+  .st-key-cc-suggestions .stButton > button:hover {
+      border-color: #bcd9c6; box-shadow: var(--cc-shadow-m);
+      transform: translateY(-2px); color: var(--cc-ink);
   }
-  /* With the sidebar open its own header carries the name, so the chevron is
-     gone and the offset that cleared it is dead space. */
-  [data-testid="stSidebar"][aria-expanded="true"] ~ .stMain [data-testid="stHeader"]::before {
-      left: 1.2rem;
+  .st-key-cc-suggestions .stButton > button:active { transform: translateY(0); }
+  .st-key-cc-suggestions [data-testid="stIconMaterial"] {
+      color: var(--cc-accent); font-size: 1.15rem;
   }
 
-  /* The lockup on the empty state: the one screen where the product should
-     say what it is at full size. */
-  .cc-lockup {
-      display: flex; align-items: center; justify-content: center;
-      gap: 0.6rem; margin: 0 0 1.25rem;
-  }
-  .cc-logo {
-      display: grid; place-items: center;
-      width: 2.15rem; height: 2.15rem; border-radius: 10px;
-      background: linear-gradient(145deg, #0e9a86, var(--cc-accent-d));
-      color: #fff; font-size: 1.15rem; line-height: 1;
-      box-shadow: 0 3px 10px -3px rgba(11,122,107,.6);
-  }
-  .cc-word {
-      font-size: 1.32rem; font-weight: 650; letter-spacing: -0.024em;
-      color: var(--cc-ink);
-  }
-  .cc-word em { font-style: normal; color: var(--cc-accent); }
-
-  /* ---- conversation ------------------------------------------------- */
+  /* ---- conversation ----------------------------------------------------- */
 
   [data-testid="stChatMessage"] {
-      background: transparent; padding: 0.3rem 0 0.55rem; gap: 0.8rem;
+      background: transparent; padding: 0.3rem 0 0.5rem; gap: 0.72rem;
   }
   [data-testid="stChatMessage"] p,
   [data-testid="stChatMessage"] li {
@@ -270,106 +306,84 @@ CSS = """
   }
   [data-testid="stChatMessage"] strong { color: var(--cc-ink); font-weight: 600; }
   [data-testid="stChatMessage"] h3 {
-      font-size: 1.06rem; font-weight: 600; letter-spacing: -0.01em;
+      font-size: 1.04rem; font-weight: 600; letter-spacing: -0.01em;
       color: var(--cc-ink); margin: 0.1rem 0 0.45rem;
   }
   [data-testid="stChatMessage"] ul { margin: 0.1rem 0 0.55rem; padding-left: 1.15rem; }
-  [data-testid="stChatMessage"] li::marker { color: var(--cc-faint); }
+  [data-testid="stChatMessage"] li::marker { color: var(--cc-accent-l); }
   [data-testid="stChatMessage"] a { color: var(--cc-accent); text-underline-offset: 2px; }
 
-  /* The user's own turn, set apart from the assistant's without a bubble. */
-  [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
+  /* The assistant speaks from a card; the reader's own words sit in a tinted
+     bubble. Two surfaces, so a long thread stays readable as a conversation
+     rather than one undifferentiated column of prose. */
+  [data-testid="stChatMessage"]:not(:has([data-testid="stChatMessageAvatarUser"]))
+      [data-testid="stChatMessageContent"] {
       background: var(--cc-surface);
       border: 1px solid var(--cc-line-soft);
-      border-radius: 14px;
-      padding: 0.55rem 0.95rem;
-      margin-bottom: 0.3rem;
+      border-radius: 16px 16px 16px 5px;
+      padding: 0.85rem 1.05rem 0.7rem;
+      box-shadow: var(--cc-shadow);
+  }
+  [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"])
+      [data-testid="stChatMessageContent"] {
+      background: var(--cc-tint);
+      border: 1px solid #dcebe1;
+      border-radius: 16px 16px 5px 16px;
+      padding: 0.62rem 0.95rem;
+      /* Hugs the words. A four-word question stretched to the full column
+         reads as a heading rather than as something the reader said. */
+      width: fit-content; max-width: 100%;
   }
   [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) p {
-      color: var(--cc-ink); font-weight: 450;
+      color: var(--cc-ink); font-weight: 450; margin-bottom: 0;
+  }
+  /* Disha's avatar is a custom emoji, so it has no test id of its own — it is
+     simply the first child of a message that is not the reader's. */
+  [data-testid="stChatMessage"]:not(:has([data-testid="stChatMessageAvatarUser"])) > div:first-child {
+      background: linear-gradient(145deg, var(--cc-accent-l), var(--cc-accent-d)) !important;
+      box-shadow: 0 2px 8px -3px rgba(31,76,56,.7);
+      border-radius: 10px !important;
+  }
+  [data-testid="stChatMessageAvatarUser"] {
+      background: #dfe8e0 !important; color: var(--cc-accent-d) !important;
+      border-radius: 10px !important;
   }
 
-  /* ---- hero, shown only on an empty conversation --------------------- */
-
-  .cc-hero { text-align: center; margin: 2.6rem 0 1.9rem; }
-  .cc-mark {
-      display: inline-flex; align-items: center; gap: 0.44rem;
-      font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em;
-      text-transform: uppercase; color: var(--cc-accent);
-      background: var(--cc-tint); border: 1px solid #d8ece7;
-      padding: 0.3rem 0.7rem; border-radius: 999px; margin-bottom: 1.15rem;
-  }
-  .cc-hero h1 {
-      font-family: 'Source Serif 4', Georgia, serif;
-      font-size: 2.35rem; font-weight: 500; line-height: 1.12;
-      letter-spacing: -0.022em; color: var(--cc-ink); margin: 0 0 0.62rem;
-  }
-  .cc-hero p {
-      color: var(--cc-muted); margin: 0 auto; font-size: 0.935rem;
-      line-height: 1.6; max-width: 31rem;
-  }
-
-  /* ---- suggestion cards ---------------------------------------------- */
-
-  .st-key-cc-suggestions .stButton > button {
-      width: 100%; text-align: left; white-space: normal; height: 100%;
-      min-height: 3.45rem;
-      padding: 0.8rem 0.95rem;
-      border-radius: 14px;
-      border: 1px solid var(--cc-line);
-      background: var(--cc-surface);
-      box-shadow: var(--cc-shadow);
-      color: var(--cc-ink);
-      font-weight: 500; font-size: 0.875rem; line-height: 1.4;
-      transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
-  }
-  .st-key-cc-suggestions .stButton > button:hover {
-      border-color: #bfe0d8; box-shadow: var(--cc-shadow-h);
-      transform: translateY(-2px); color: var(--cc-ink);
-  }
-  .st-key-cc-suggestions .stButton > button:active { transform: translateY(0); }
-  .st-key-cc-suggestions [data-testid="stIconMaterial"] {
-      color: var(--cc-accent); font-size: 1.15rem; margin-right: 0.15rem;
-  }
-
-  /* ---- follow-up chips ------------------------------------------------ */
+  /* ---- follow-up chips --------------------------------------------------- */
 
   .cc-nudge {
-      font-size: 0.71rem; font-weight: 600; letter-spacing: 0.07em;
+      font-size: 0.7rem; font-weight: 600; letter-spacing: 0.085em;
       text-transform: uppercase; color: var(--cc-faint);
-      margin: 0.85rem 0 0.4rem;
+      margin: 0.9rem 0 0.42rem;
   }
   [class*="st-key-cc-followups"] .stButton > button {
       width: 100%; text-align: left; white-space: normal; height: 100%;
-      min-height: 2.5rem;
-      padding: 0.5rem 0.85rem;
+      min-height: 2.5rem; padding: 0.5rem 0.85rem;
       /* Not a full pill: these wrap to two lines as often as not, and a 999px
          radius on a two-line box reads as a blob rather than a chip. */
       border-radius: 13px;
-      border: 1px solid var(--cc-line);
-      background: var(--cc-surface);
-      color: var(--cc-body);
-      font-size: 0.815rem; font-weight: 450; line-height: 1.35;
-      box-shadow: none;
+      border: 1px solid var(--cc-line); background: var(--cc-surface);
+      color: var(--cc-body); font-size: 0.815rem; font-weight: 450; line-height: 1.35;
+      box-shadow: 0 1px 2px rgba(20,35,31,.03);
       transition: background .14s ease, border-color .14s ease, color .14s ease;
   }
   [class*="st-key-cc-followups"] .stButton > button:hover {
-      background: var(--cc-tint); border-color: #bfe0d8; color: var(--cc-accent-d);
+      background: var(--cc-tint); border-color: #bcd9c6; color: var(--cc-accent-d);
   }
 
-  /* ---- urgency chip --------------------------------------------------- */
+  /* ---- urgency chip ------------------------------------------------------ */
 
   .cc-chip {
       display: inline-flex; align-items: center; gap: 0.5rem;
       padding: 0.3rem 0.72rem 0.3rem 0.62rem;
       border-radius: 9px; font-size: 0.735rem;
-      margin: 0.3rem 0 0.1rem;
+      margin: 0.55rem 0 0.1rem;
       border: 1px solid; border-left-width: 3px;
   }
   .cc-chip b { font-weight: 650; letter-spacing: 0.035em; }
   .cc-chip span { font-weight: 450; opacity: 0.82; }
 
-  /* ---- audit panel ---------------------------------------------------- */
+  /* ---- audit panel -------------------------------------------------------- */
 
   [data-testid="stExpander"] { border: none; background: transparent; }
   [data-testid="stExpander"] details { border: none; background: transparent; }
@@ -379,94 +393,140 @@ CSS = """
   }
   [data-testid="stExpander"] summary:hover { color: var(--cc-accent); }
   [data-testid="stExpander"] [data-testid="stExpanderDetails"] {
-      border-left: 2px solid var(--cc-line);
-      padding-left: 0.95rem; margin-left: 0.15rem;
+      border-left: 2px solid var(--cc-line); padding-left: 0.95rem; margin-left: 0.15rem;
   }
   [data-testid="stExpander"] [data-testid="stExpanderDetails"] p,
   [data-testid="stExpander"] [data-testid="stExpanderDetails"] li {
       font-size: 0.795rem; line-height: 1.55; color: var(--cc-muted);
   }
   [data-testid="stExpander"] code {
-      font-size: 0.74rem; background: var(--cc-canvas);
+      font-size: 0.74rem; background: var(--cc-canvas-2);
       color: var(--cc-accent-d); padding: 0.05rem 0.28rem; border-radius: 4px;
   }
 
-  /* ---- chat input ------------------------------------------------------ */
+  /* ---- the input dock, and the footer beneath it --------------------------
+     The disclaimer belongs under the box a person is about to type into, not
+     above it, so the dock reserves room at its foot and the footer is fixed
+     into that space. */
 
+  [data-testid="stBottomBlockContainer"] {
+      background: transparent;
+      padding-bottom: 3.9rem;
+      padding-top: 0.6rem;
+  }
+  [data-testid="stBottom"] > div {
+      background: linear-gradient(to top, var(--cc-canvas) 62%, rgba(244,246,241,0));
+  }
   [data-testid="stChatInput"] {
-      border-radius: 15px; border: 1px solid var(--cc-line);
-      background: var(--cc-surface); box-shadow: var(--cc-shadow);
+      border-radius: 17px; border: 1px solid var(--cc-line);
+      background: var(--cc-surface); box-shadow: var(--cc-shadow-m);
   }
   [data-testid="stChatInput"]:focus-within {
-      border-color: #bfe0d8;
-      box-shadow: 0 0 0 3px rgba(11,122,107,.10), var(--cc-shadow);
+      border-color: var(--cc-accent-l);
+      box-shadow: 0 0 0 3px rgba(74,139,105,.14), var(--cc-shadow-m);
   }
-  [data-testid="stBottomBlockContainer"] { background: transparent; }
+  [data-testid="stChatInputSubmitButton"] {
+      background: var(--cc-accent) !important; border-radius: 11px !important;
+  }
+  [data-testid="stChatInputSubmitButton"] [data-testid="stIconMaterial"],
+  [data-testid="stChatInputSubmitButton"] svg { color: #fff !important; fill: #fff !important; }
+  [data-testid="stChatInputSubmitButton"]:hover { background: var(--cc-accent-d) !important; }
 
-  /* ---- footer ---------------------------------------------------------- */
-
-  .cc-foot {
-      text-align: center; font-size: 0.735rem; color: var(--cc-faint);
-      margin: 0; padding-top: 0.9rem; line-height: 1.6;
+  .cc-dock {
+      /* This div is the fixed element, not the Streamlit container holding it.
+         Fixing the container meant Streamlit decided its height — it settled
+         on 49px for 63px of text and clipped the author line off the bottom of
+         the screen. A plain div sizes to its own content.
+         z-index clears the input dock, which Streamlit puts at 99. */
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 120;
+      background: var(--cc-canvas);
       border-top: 1px solid var(--cc-line-soft);
+      padding: 0.5rem 1rem 0.6rem;
   }
-  .cc-sig {
-      text-align: center; font-size: 0.715rem; color: var(--cc-faint);
-      margin: 0.32rem 0 0;
+  body:has([data-testid="stSidebar"][aria-expanded="true"]) .cc-dock { left: 21rem; }
+  .cc-foot { line-height: 1.45; }
+  .cc-sig  { line-height: 1.45; }
+  body:has([data-testid="stSidebar"][aria-expanded="true"]) .st-key-cc-footer {
+      left: 21rem;
   }
+  .cc-foot {
+      text-align: center; font-size: 0.715rem; color: var(--cc-faint); margin: 0;
+  }
+  .cc-sig { text-align: center; font-size: 0.7rem; color: var(--cc-faint); margin: 0.12rem 0 0; }
   .cc-sig a { color: var(--cc-muted); text-decoration: none; font-weight: 500; }
-  .cc-sig a:hover { color: var(--cc-accent); text-decoration: underline;
-                    text-underline-offset: 2px; }
-  .cc-sig .cc-dot { color: var(--cc-line); margin: 0 0.42rem; }
+  .cc-sig a:hover { color: var(--cc-accent); text-decoration: underline; text-underline-offset: 2px; }
+  .cc-sig .cc-dot { color: var(--cc-line); margin: 0 0.4rem; }
 
-  /* ---- page furniture for the non-chat views --------------------------- */
+  /* ---- the non-chat views -------------------------------------------------- */
 
   .cc-page-title {
-      font-family: 'Source Serif 4', Georgia, serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 1.62rem; font-weight: 500; letter-spacing: -0.015em;
-      color: var(--cc-ink); margin: 0.6rem 0 0.35rem;
+      color: var(--cc-ink); margin: 0.4rem 0 0.35rem;
   }
-  .cc-note {
-      font-size: 0.855rem; line-height: 1.62; color: var(--cc-muted);
-      margin: 0 0 1.1rem;
-  }
+  .cc-note { font-size: 0.855rem; line-height: 1.62; color: var(--cc-muted); margin: 0 0 1.1rem; }
   [data-testid="stMetric"] {
       background: var(--cc-surface); border: 1px solid var(--cc-line-soft);
-      border-radius: 13px; padding: 0.7rem 0.85rem; box-shadow: var(--cc-shadow);
+      border-radius: 14px; padding: 0.7rem 0.85rem; box-shadow: var(--cc-shadow);
   }
   [data-testid="stMetricLabel"] p {
       font-size: 0.72rem !important; font-weight: 500; color: var(--cc-faint);
       letter-spacing: 0.02em;
   }
   [data-testid="stMetricValue"] {
-      font-size: 1.42rem; font-weight: 600; color: var(--cc-ink);
-      letter-spacing: -0.015em;
+      font-size: 1.42rem; font-weight: 600; color: var(--cc-ink); letter-spacing: -0.015em;
   }
 
-  /* ---- sidebar ---------------------------------------------------------- */
+  /* ---- sidebar -------------------------------------------------------------- */
 
   [data-testid="stSidebar"] {
       background: var(--cc-surface); border-right: 1px solid var(--cc-line-soft);
   }
   .cc-brand {
       display: flex; align-items: center; gap: 0.5rem;
-      font-size: 1.02rem; font-weight: 600; letter-spacing: -0.015em;
-      color: var(--cc-ink); margin: 0.2rem 0 0.15rem;
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 1.16rem; font-weight: 600; letter-spacing: -0.012em;
+      color: var(--cc-ink); margin: 0.2rem 0 0.2rem;
   }
-  .cc-brand-sub {
-      font-size: 0.755rem; color: var(--cc-faint); line-height: 1.5;
-      margin: 0 0 0.1rem;
-  }
+  .cc-brand-sub { font-size: 0.755rem; color: var(--cc-faint); line-height: 1.5; margin: 0; }
   [data-testid="stSidebar"] [data-testid="stRadio"] label p { font-size: 0.87rem; }
-  .cc-status {
-      font-size: 0.735rem; line-height: 1.62; color: var(--cc-muted);
-  }
+  .cc-status { font-size: 0.735rem; line-height: 1.62; color: var(--cc-muted); }
   .cc-status b { color: var(--cc-body); font-weight: 600; }
   .cc-dot-live {
       display: inline-block; width: 6px; height: 6px; border-radius: 50%;
-      background: var(--cc-accent); margin-right: 0.38rem; vertical-align: middle;
+      background: var(--cc-accent-l); margin-right: 0.38rem; vertical-align: middle;
   }
   .cc-dot-off { background: var(--cc-faint); }
+
+  /* ---- small screens ---------------------------------------------------------
+     Stop reserving height the screen does not have: the reservation is what
+     pushes the welcome panel to the optical centre on a roomy display, but
+     where content already fills the screen it only creates overflow — and
+     because the chat pane scrolls itself to the bottom, that overflow comes
+     off the top and slides the greeting under the identity bar. */
+
+  @media (max-height: 820px) {
+      .stMain .block-container > [data-testid="stVerticalBlock"] { min-height: 0; }
+  }
+  @media (max-width: 640px) {
+      .stMain .block-container > [data-testid="stVerticalBlock"] { min-height: 0; }
+      /* Still has to clear the bar — an earlier flat value here put the
+         page titles underneath it on a phone. */
+      .block-container {
+          padding-top: calc(var(--cc-bar) + 0.9rem);
+          padding-left: 1rem; padding-right: 1rem;
+      }
+      :root { --cc-bar: 4.1rem; }
+      [data-testid="stHeader"]::after { font-size: 0.85rem; left: 3.9rem; }
+      [data-testid="stHeader"]::before { width: 2.2rem; height: 2.2rem; font-size: 1.05rem; }
+      .cc-greet { font-size: 1.38rem; }
+      .cc-welcome { padding: 1.25rem 1.15rem 1.15rem; }
+      /* Two suggestions, not four. Stacked single-file on a phone the other
+         two push the greeting off the top of the screen, and a starting point
+         the reader has to scroll up to find is not a starting point. */
+      .st-key-sg2, .st-key-sg3 { display: none; }
+      body:has([data-testid="stSidebar"][aria-expanded="true"]) .cc-dock { left: 0; }
+  }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -530,7 +590,8 @@ init_state()
 with st.sidebar:
     st.markdown(
         f'<div class="cc-brand">🧭 {APP_NAME}</div>'
-        '<p class="cc-brand-sub">Health guidance with a safety floor you can audit</p>',
+        f'<p class="cc-brand-sub">{BOT_NAME} — health guidance with a safety '
+        "floor you can audit</p>",
         unsafe_allow_html=True,
     )
     st.write("")
@@ -578,31 +639,29 @@ with st.sidebar:
 
 
 def render_footer() -> None:
-    """Disclaimer and author line, pinned to the end of the page.
+    """Disclaimer and author line, docked beneath the input.
 
-    Wrapped in a keyed container purely for the CSS hook: `.st-key-cc-footer`
-    takes `margin-top: auto`, which is what drops it to the bottom of the
-    column instead of leaving it wherever the content happened to stop.
+    Emitted as one markdown block rather than two. Streamlit lays a container's
+    children out as a flex column with a 1rem gap, and with two children that
+    gap pushed the author line out of the fixed box and off the bottom of the
+    screen.
+
+    The `.cc-dock` div is fixed into the space the input dock reserves at its
+    foot. A disclaimer belongs
+    under the box someone is about to type into — above it, it is read once and
+    then scrolled past forever.
     """
-    with st.container(key="cc-footer"):
-        st.markdown(
-            '<p class="cc-foot">General health information, not a diagnosis or a '
-            "prescription. In an emergency call <b>112</b>.</p>",
-            unsafe_allow_html=True,
-        )
-        signature()
-
-
-def signature() -> None:
-    """Author line. Rendered once at the foot of whichever view is open."""
     st.markdown(
-        '<p class="cc-sig">'
-        f'<a href="{AUTHOR_URL}" target="_blank" rel="noopener">{AUTHOR}</a>'
-        f'<span class="cc-dot">·</span>{AUTHOR_AFFILIATION}'
-        f'<span class="cc-dot">·</span>'
-        f'<a href="{AUTHOR_URL}" target="_blank" rel="noopener">abhaanisha.github.io</a>'
-        "</p>",
-        unsafe_allow_html=True,
+            '<div class="cc-dock">'
+            f'<p class="cc-foot">{BOT_NAME} gives general health information — not a '
+            "diagnosis, not a prescription. In an emergency call <b>112</b>.</p>"
+            '<p class="cc-sig">'
+            f'<a href="{AUTHOR_URL}" target="_blank" rel="noopener">{AUTHOR}</a>'
+            f'<span class="cc-dot">·</span>{AUTHOR_AFFILIATION}'
+            f'<span class="cc-dot">·</span>'
+            f'<a href="{AUTHOR_URL}" target="_blank" rel="noopener">abhaanisha.github.io</a>'
+            "</p></div>",
+            unsafe_allow_html=True,
     )
 
 
@@ -659,13 +718,18 @@ def render_chat() -> None:
         # centre it as a unit between the header and the footer.
         with st.container(key="cc-welcome"):
             st.markdown(
-                '<div class="cc-hero">'
-                '<div class="cc-mark">Grounded · Auditable · Triaged</div>'
-                "<h1>What is going on?</h1>"
-                "<p>Describe a symptom in English, Hindi or Bengali. Every answer "
-                "shows the rules that fired and the passages it used — from a "
-                "curated knowledge base, and from public-health sources when the "
-                "question reaches past it.</p></div>",
+                '<div class="cc-welcome">'
+                f'<div class="cc-greet">Namaste — I am {BOT_NAME}. 🙏</div>'
+                "<p>Tell me what is going on, in English, Hindi or Bengali. I will "
+                "say how soon it needs attention and show you exactly what I based "
+                "that on — the rules that fired and the passages I read.</p>"
+                '<div class="cc-pills">'
+                '<span class="cc-pill">Symptom triage</span>'
+                '<span class="cc-pill">Cited sources</span>'
+                '<span class="cc-pill">Red-flag rules</span>'
+                '<span class="cc-pill">हिंदी · বাংলা</span>'
+                "</div></div>"
+                '<p class="cc-sub">Or start with one of these</p>',
                 unsafe_allow_html=True,
             )
             with st.container(key="cc-suggestions"):
@@ -678,7 +742,7 @@ def render_chat() -> None:
 
     last = len(history) - 1
     for index, entry in enumerate(history):
-        with st.chat_message(entry["role"]):
+        with st.chat_message(entry["role"], avatar=AVATARS[entry["role"]]):
             st.markdown(entry["content"])
             if entry.get("meta"):
                 render_audit(entry["meta"])
@@ -692,11 +756,11 @@ def render_chat() -> None:
         render_footer()
         return
 
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar=AVATARS["user"]):
         st.markdown(message)
 
-    with st.chat_message("assistant"):
-        with st.spinner("Checking the rules and the knowledge base…"):
+    with st.chat_message("assistant", avatar=AVATARS["assistant"]):
+        with st.spinner(f"{BOT_NAME} is checking the rules and the sources…"):
             result = ASSISTANT.answer(
                 message,
                 history=history,
