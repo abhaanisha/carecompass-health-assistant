@@ -140,20 +140,124 @@ CSS = """
       --cc-shadow-h: 0 1px 2px rgba(16,26,36,.05), 0 14px 32px -14px rgba(11,122,107,.30);
   }
 
-  html, body, [class*="st-"], button, input, textarea {
+  /* Set the face on the roots and the form elements that do not inherit, and
+     nowhere else. An earlier version of this rule used [class*="st-"], which
+     also matched Streamlit's icon spans — and those icons are a *ligature*
+     font, so overriding the family made every one of them render its own name
+     as literal text ("child_care", "add") straight through the button label.
+     The guard below is belt and braces against the same mistake returning. */
+  html, body, .stApp, button, input, textarea, select, optgroup {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       font-feature-settings: 'cv05' 1, 'ss01' 1;
+  }
+  [data-testid="stIconMaterial"],
+  .material-symbols-rounded,
+  span[class*="material-symbols"] {
+      font-family: 'Material Symbols Rounded' !important;
+      font-feature-settings: 'liga' 1 !important;
   }
   .stApp { background: var(--cc-canvas); }
 
   /* Streamlit's chrome competes with the conversation. */
-  [data-testid="stHeader"] { background: transparent; height: 2.6rem; }
   [data-testid="stToolbar"] { right: 0.5rem; }
   #MainMenu, footer { visibility: hidden; }
 
   .block-container {
-      padding-top: 2rem; padding-bottom: 7rem; max-width: 45rem;
+      padding-top: 3.6rem; padding-bottom: 2rem; max-width: 46rem;
   }
+
+  /* The page is a column with the footer pushed to its end.
+     Before this, the disclaimer and author line sat wherever the content
+     happened to stop — which on the empty state was directly under the
+     suggestion cards, stranded in the middle of the screen with a dead gap
+     beneath it and the input floating far below. `margin-top: auto` on the
+     last block is the whole fix: short conversations push the footer to the
+     bottom of the viewport, long ones let it come to rest after the final
+     message, which is where a footer belongs. */
+  /* Sized so the empty state does not overflow its scroll container. It is
+     not free height: the header sits above it and Streamlit's input dock is
+     an in-flow sibling below it, so anything taller makes the container
+     scroll — and because the chat pane scrolls itself to the bottom, the
+     overflow is taken off the *top*, sliding the hero under the header. */
+  .stMain .block-container > [data-testid="stVerticalBlock"] {
+      min-height: calc(100vh - 14rem);
+  }
+  /* The keyed container is not the flex child — Streamlit wraps it in an
+     stLayoutWrapper — so `margin-top: auto` has to go on the wrapper or it
+     silently resolves to 0 and the footer stays where the content stopped. */
+  [data-testid="stLayoutWrapper"]:has(> .st-key-cc-footer) { margin-top: auto; }
+  .st-key-cc-footer { padding-top: 1.5rem; }
+  /* Auto margins on both sides of the welcome block: the free space in the
+     column splits between them, so the hero sits in the optical centre
+     instead of hugging the header with a dead gap underneath. */
+  [data-testid="stLayoutWrapper"]:has(> .st-key-cc-welcome) {
+      margin-top: auto; margin-bottom: auto;
+  }
+
+  /* Short and narrow viewports: stop forcing the column taller than the
+     screen. The reserved height is what pushes the footer down on a roomy
+     display, but where the content already fills the screen it only creates
+     overflow — and because the chat pane scrolls itself to the bottom, that
+     overflow is taken off the top and slides the hero under the header. */
+  @media (max-height: 780px) {
+      .stMain .block-container > [data-testid="stVerticalBlock"] { min-height: 0; }
+  }
+  @media (max-width: 640px) {
+      .stMain .block-container > [data-testid="stVerticalBlock"] { min-height: 0; }
+      .block-container { padding-top: 3.2rem; padding-left: 1rem; padding-right: 1rem; }
+      .cc-hero { margin: 1.5rem 0 1.4rem; }
+      .cc-hero h1 { font-size: 1.78rem; }
+      .cc-hero p { font-size: 0.88rem; }
+      .cc-mark { margin-bottom: 0.9rem; font-size: 0.66rem; }
+      [data-testid="stHeader"]::before { left: 3.1rem; font-size: 0.88rem; }
+      /* Two suggestions, not four. Stacked single-file on a phone the other
+         two push the hero off the top of the screen, and a starting point the
+         reader has to scroll up to find is not a starting point. */
+      .st-key-sg2, .st-key-sg3 { display: none; }
+  }
+
+  /* ---- brand ----------------------------------------------------------- */
+
+  /* In Streamlit's own fixed header, which is the one strip that survives the
+     chat container scrolling itself to the bottom. A brand rendered into the
+     page column instead just scrolls away — the first attempt at this sat at
+     y = -68px on load, present in the DOM and invisible to everyone. */
+  [data-testid="stHeader"] {
+      background: rgba(247,250,251,0.94);
+      backdrop-filter: saturate(160%) blur(10px);
+      border-bottom: 1px solid var(--cc-line-soft);
+      height: 3rem;
+  }
+  [data-testid="stHeader"]::before {
+      content: "🧭  CareCompass";
+      position: absolute; left: 3.5rem; top: 50%; transform: translateY(-50%);
+      font-size: 0.95rem; font-weight: 650; letter-spacing: -0.02em;
+      color: var(--cc-ink); white-space: nowrap; pointer-events: none;
+  }
+  /* With the sidebar open its own header carries the name, so the chevron is
+     gone and the offset that cleared it is dead space. */
+  [data-testid="stSidebar"][aria-expanded="true"] ~ .stMain [data-testid="stHeader"]::before {
+      left: 1.2rem;
+  }
+
+  /* The lockup on the empty state: the one screen where the product should
+     say what it is at full size. */
+  .cc-lockup {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0.6rem; margin: 0 0 1.25rem;
+  }
+  .cc-logo {
+      display: grid; place-items: center;
+      width: 2.15rem; height: 2.15rem; border-radius: 10px;
+      background: linear-gradient(145deg, #0e9a86, var(--cc-accent-d));
+      color: #fff; font-size: 1.15rem; line-height: 1;
+      box-shadow: 0 3px 10px -3px rgba(11,122,107,.6);
+  }
+  .cc-word {
+      font-size: 1.32rem; font-weight: 650; letter-spacing: -0.024em;
+      color: var(--cc-ink);
+  }
+  .cc-word em { font-style: normal; color: var(--cc-accent); }
 
   /* ---- conversation ------------------------------------------------- */
 
@@ -187,7 +291,7 @@ CSS = """
 
   /* ---- hero, shown only on an empty conversation --------------------- */
 
-  .cc-hero { text-align: center; margin: 3.6rem 0 2.1rem; }
+  .cc-hero { text-align: center; margin: 2.6rem 0 1.9rem; }
   .cc-mark {
       display: inline-flex; align-items: center; gap: 0.44rem;
       font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em;
@@ -236,9 +340,12 @@ CSS = """
       margin: 0.85rem 0 0.4rem;
   }
   [class*="st-key-cc-followups"] .stButton > button {
-      width: 100%; text-align: left; white-space: normal; height: auto;
-      padding: 0.42rem 0.8rem;
-      border-radius: 999px;
+      width: 100%; text-align: left; white-space: normal; height: 100%;
+      min-height: 2.5rem;
+      padding: 0.5rem 0.85rem;
+      /* Not a full pill: these wrap to two lines as often as not, and a 999px
+         radius on a two-line box reads as a blob rather than a chip. */
+      border-radius: 13px;
       border: 1px solid var(--cc-line);
       background: var(--cc-surface);
       color: var(--cc-body);
@@ -300,12 +407,12 @@ CSS = """
 
   .cc-foot {
       text-align: center; font-size: 0.735rem; color: var(--cc-faint);
-      margin: 0.7rem 0 0; line-height: 1.6;
+      margin: 0; padding-top: 0.9rem; line-height: 1.6;
+      border-top: 1px solid var(--cc-line-soft);
   }
   .cc-sig {
       text-align: center; font-size: 0.715rem; color: var(--cc-faint);
-      margin: 0.45rem 0 0; padding-top: 0.55rem;
-      border-top: 1px solid var(--cc-line-soft);
+      margin: 0.32rem 0 0;
   }
   .cc-sig a { color: var(--cc-muted); text-decoration: none; font-weight: 500; }
   .cc-sig a:hover { color: var(--cc-accent); text-decoration: underline;
@@ -471,13 +578,19 @@ with st.sidebar:
 
 
 def render_footer() -> None:
-    """Disclaimer and author line, at the true foot of the chat view."""
-    st.markdown(
-        '<p class="cc-foot">General health information, not a diagnosis or a '
-        "prescription. In an emergency call 112.</p>",
-        unsafe_allow_html=True,
-    )
-    signature()
+    """Disclaimer and author line, pinned to the end of the page.
+
+    Wrapped in a keyed container purely for the CSS hook: `.st-key-cc-footer`
+    takes `margin-top: auto`, which is what drops it to the bottom of the
+    column instead of leaving it wherever the content happened to stop.
+    """
+    with st.container(key="cc-footer"):
+        st.markdown(
+            '<p class="cc-foot">General health information, not a diagnosis or a '
+            "prescription. In an emergency call <b>112</b>.</p>",
+            unsafe_allow_html=True,
+        )
+        signature()
 
 
 def signature() -> None:
@@ -542,23 +655,26 @@ def render_chat() -> None:
     st.session_state.pending = None
 
     if not history and not message:
-        st.markdown(
-            '<div class="cc-hero">'
-            '<div class="cc-mark">Grounded · Auditable · Triaged</div>'
-            "<h1>What is going on?</h1>"
-            "<p>Describe a symptom in English, Hindi or Bengali. Every answer shows "
-            "the rules that fired and the passages it used — from a curated "
-            "knowledge base, and from public-health sources when the question "
-            "reaches past it.</p></div>",
-            unsafe_allow_html=True,
-        )
-        with st.container(key="cc-suggestions"):
-            left, right = st.columns(2, gap="small")
-            for i, (label, prompt, icon) in enumerate(SUGGESTIONS):
-                with (left, right)[i % 2]:
-                    if st.button(label, key=f"sg{i}", icon=icon):
-                        st.session_state.pending = prompt
-                        st.rerun()
+        # One keyed block for the whole welcome state, so the stylesheet can
+        # centre it as a unit between the header and the footer.
+        with st.container(key="cc-welcome"):
+            st.markdown(
+                '<div class="cc-hero">'
+                '<div class="cc-mark">Grounded · Auditable · Triaged</div>'
+                "<h1>What is going on?</h1>"
+                "<p>Describe a symptom in English, Hindi or Bengali. Every answer "
+                "shows the rules that fired and the passages it used — from a "
+                "curated knowledge base, and from public-health sources when the "
+                "question reaches past it.</p></div>",
+                unsafe_allow_html=True,
+            )
+            with st.container(key="cc-suggestions"):
+                left, right = st.columns(2, gap="small")
+                for i, (label, prompt, icon) in enumerate(SUGGESTIONS):
+                    with (left, right)[i % 2]:
+                        if st.button(label, key=f"sg{i}", icon=icon):
+                            st.session_state.pending = prompt
+                            st.rerun()
 
     last = len(history) - 1
     for index, entry in enumerate(history):
@@ -667,7 +783,7 @@ def render_insights() -> None:
 
     if not events:
         st.info("No turns yet. Ask something in the Chat view.")
-        signature()
+        render_footer()
         return
 
     st.caption("Urgency distribution")
@@ -696,7 +812,7 @@ def render_insights() -> None:
             hide_index=True,
         )
 
-    signature()
+    render_footer()
 
 
 # --------------------------------------------------------------------------
@@ -729,7 +845,7 @@ def render_evaluation() -> None:
         data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
     if not data:
         st.info("Press the button to run the gold set.")
-        signature()
+        render_footer()
         return
 
     metrics = data["metrics"]
@@ -761,7 +877,7 @@ def render_evaluation() -> None:
     else:
         st.success("All cases passed.")
 
-    signature()
+    render_footer()
 
 
 if page == "Chat":
