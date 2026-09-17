@@ -3,15 +3,17 @@
 Laid out the way people now expect a chat product to look: one narrow centred
 column, a collapsed sidebar, suggestion cards on the empty state, and the input
 pinned at the bottom. Everything that is not the conversation — analytics, the
-evaluation harness, the architecture notes — moved behind sidebar navigation so
-the chat surface has nothing competing with it.
+evaluation harness — moved behind sidebar navigation so the chat surface has
+nothing competing with it.
 
-Two deliberate departures from a plain chatbot, because they are the point of
+Three deliberate departures from a plain chatbot, because they are the point of
 the project rather than decoration:
 
 * a small urgency chip under each answer, colour-coded to the triage level
 * one collapsed "Sources and decision trace" control per answer, holding the
-  passages used and the rules that fired
+  passages used and the rules that fired, with curated and just-fetched sources
+  kept visibly apart
+* follow-up chips under the latest answer, so the next question costs a click
 
 The medical disclaimer is rendered once under the input instead of repeated
 under every message. Repetition is how a disclaimer stops being read; the
@@ -37,9 +39,13 @@ _KEYS = (
     "ANTHROPIC_API_KEY",
     "OPENROUTER_API_KEY",
     "HF_TOKEN",
+    "TAVILY_API_KEY",
+    "BRAVE_API_KEY",
+    "SERPER_API_KEY",
     "CARECOMPASS_PROVIDER",
     "CARECOMPASS_MODEL",
     "CARECOMPASS_DISABLE_DENSE",
+    "CARECOMPASS_WEB_MODE",
 )
 for _key in _KEYS:
     try:
@@ -58,6 +64,10 @@ from src.config import APP_NAME, EVAL_DIR, SUPPORTED_LANGUAGES, VERSION
 from src.pipeline import MODE_CRISIS, MODE_EMERGENCY, CareCompass
 from src.triage import LEVELS, Urgency
 
+AUTHOR = "Abha Singh Sardar"
+AUTHOR_AFFILIATION = "IISc"
+AUTHOR_URL = "https://abhaanisha.github.io/"
+
 st.set_page_config(
     page_title=f"{APP_NAME} — health guidance",
     page_icon="🧭",
@@ -65,53 +75,291 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+#: Label, the message it sends, and a Material icon. The four are chosen to
+#: show the range in one screen rather than to flatter the system: a
+#: paediatric case, a cardiac red flag, a chronic-cough case that should
+#: escalate, and a lab-result question the assistant is required to decline.
 SUGGESTIONS = [
-    ("Loose motions in a toddler", "My 3 year old has had loose motions for two days and is drinking less"),
-    ("Chest tightness on the stairs", "I get chest tightness when I climb stairs, it goes away when I rest"),
-    ("A cough that will not clear", "Cough for three weeks with weight loss and night sweats"),
-    ("Making sense of a lab result", "My HbA1c came back 7.4 — what does that mean?"),
+    (
+        "Loose motions in a toddler",
+        "My 3 year old has had loose motions for two days and is drinking less",
+        ":material/child_care:",
+    ),
+    (
+        "Chest tightness on the stairs",
+        "I get chest tightness when I climb stairs, it goes away when I rest",
+        ":material/monitor_heart:",
+    ),
+    (
+        "A cough that will not clear",
+        "Cough for three weeks with weight loss and night sweats",
+        ":material/pulmonology:",
+    ),
+    (
+        "Making sense of a lab result",
+        "My HbA1c came back 7.4 — what does that mean?",
+        ":material/science:",
+    ),
 ]
+
+# --------------------------------------------------------------------------
+# styling
+#
+# Streamlit's defaults are competent and completely anonymous, which is the
+# wrong register for something a person opens while worried about a child. The
+# sheet below is doing three specific jobs, not decorating:
+#
+# 1. Establishing a type hierarchy. A serif display face for the one line that
+#    asks the question, a humanist sans everywhere else, and a measure capped
+#    near 68 characters so an answer reads like prose instead of a form.
+# 2. Making the urgency chip legible without shouting. Solid fills on five
+#    levels turn every answer into an alarm and the red one stops meaning
+#    anything; a tinted ground with a saturated rule and label keeps the
+#    EMERGENCY case distinguishable at a glance.
+# 3. Giving the click targets — suggestion cards and follow-up chips — enough
+#    surface, depth and hover response to read as affordances.
+# --------------------------------------------------------------------------
 
 CSS = """
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;650&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap');
+
+  :root {
+      --cc-ink:      #101a24;
+      --cc-body:     #2c3a48;
+      --cc-muted:    #64798c;
+      --cc-faint:    #8fa3b4;
+      --cc-line:     #e2e9ef;
+      --cc-line-soft:#eef3f7;
+      --cc-surface:  #ffffff;
+      --cc-canvas:   #f7fafb;
+      --cc-accent:   #0b7a6b;
+      --cc-accent-d: #095f54;
+      --cc-tint:     #f0f8f6;
+      --cc-shadow:   0 1px 2px rgba(16,26,36,.04), 0 8px 24px -12px rgba(16,26,36,.14);
+      --cc-shadow-h: 0 1px 2px rgba(16,26,36,.05), 0 14px 32px -14px rgba(11,122,107,.30);
+  }
+
+  html, body, [class*="st-"], button, input, textarea {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-feature-settings: 'cv05' 1, 'ss01' 1;
+  }
+  .stApp { background: var(--cc-canvas); }
+
   /* Streamlit's chrome competes with the conversation. */
-  [data-testid="stHeader"] { background: transparent; height: 2.2rem; }
+  [data-testid="stHeader"] { background: transparent; height: 2.6rem; }
   [data-testid="stToolbar"] { right: 0.5rem; }
   #MainMenu, footer { visibility: hidden; }
 
-  .block-container { padding-top: 2.2rem; padding-bottom: 6rem; max-width: 46rem; }
+  .block-container {
+      padding-top: 2rem; padding-bottom: 7rem; max-width: 45rem;
+  }
+
+  /* ---- conversation ------------------------------------------------- */
 
   [data-testid="stChatMessage"] {
-      background: transparent; padding: 0.35rem 0; gap: 0.7rem;
+      background: transparent; padding: 0.3rem 0 0.55rem; gap: 0.8rem;
   }
-  [data-testid="stChatMessage"] p { line-height: 1.62; }
+  [data-testid="stChatMessage"] p,
+  [data-testid="stChatMessage"] li {
+      line-height: 1.68; color: var(--cc-body); font-size: 0.945rem;
+  }
+  [data-testid="stChatMessage"] strong { color: var(--cc-ink); font-weight: 600; }
+  [data-testid="stChatMessage"] h3 {
+      font-size: 1.06rem; font-weight: 600; letter-spacing: -0.01em;
+      color: var(--cc-ink); margin: 0.1rem 0 0.45rem;
+  }
+  [data-testid="stChatMessage"] ul { margin: 0.1rem 0 0.55rem; padding-left: 1.15rem; }
+  [data-testid="stChatMessage"] li::marker { color: var(--cc-faint); }
+  [data-testid="stChatMessage"] a { color: var(--cc-accent); text-underline-offset: 2px; }
 
-  /* Hero, shown only on an empty conversation. */
-  .cc-hero { text-align: center; margin: 3.4rem 0 1.9rem; }
-  .cc-hero h1 { font-size: 1.72rem; font-weight: 650; margin: 0 0 0.5rem;
-                letter-spacing: -0.02em; }
-  .cc-hero p { opacity: 0.62; margin: 0; font-size: 0.95rem; }
+  /* The user's own turn, set apart from the assistant's without a bubble. */
+  [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
+      background: var(--cc-surface);
+      border: 1px solid var(--cc-line-soft);
+      border-radius: 14px;
+      padding: 0.55rem 0.95rem;
+      margin-bottom: 0.3rem;
+  }
+  [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) p {
+      color: var(--cc-ink); font-weight: 450;
+  }
 
-  /* Suggestion cards. */
-  .stButton > button {
+  /* ---- hero, shown only on an empty conversation --------------------- */
+
+  .cc-hero { text-align: center; margin: 3.6rem 0 2.1rem; }
+  .cc-mark {
+      display: inline-flex; align-items: center; gap: 0.44rem;
+      font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--cc-accent);
+      background: var(--cc-tint); border: 1px solid #d8ece7;
+      padding: 0.3rem 0.7rem; border-radius: 999px; margin-bottom: 1.15rem;
+  }
+  .cc-hero h1 {
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 2.35rem; font-weight: 500; line-height: 1.12;
+      letter-spacing: -0.022em; color: var(--cc-ink); margin: 0 0 0.62rem;
+  }
+  .cc-hero p {
+      color: var(--cc-muted); margin: 0 auto; font-size: 0.935rem;
+      line-height: 1.6; max-width: 31rem;
+  }
+
+  /* ---- suggestion cards ---------------------------------------------- */
+
+  .st-key-cc-suggestions .stButton > button {
+      width: 100%; text-align: left; white-space: normal; height: 100%;
+      min-height: 3.45rem;
+      padding: 0.8rem 0.95rem;
+      border-radius: 14px;
+      border: 1px solid var(--cc-line);
+      background: var(--cc-surface);
+      box-shadow: var(--cc-shadow);
+      color: var(--cc-ink);
+      font-weight: 500; font-size: 0.875rem; line-height: 1.4;
+      transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+  }
+  .st-key-cc-suggestions .stButton > button:hover {
+      border-color: #bfe0d8; box-shadow: var(--cc-shadow-h);
+      transform: translateY(-2px); color: var(--cc-ink);
+  }
+  .st-key-cc-suggestions .stButton > button:active { transform: translateY(0); }
+  .st-key-cc-suggestions [data-testid="stIconMaterial"] {
+      color: var(--cc-accent); font-size: 1.15rem; margin-right: 0.15rem;
+  }
+
+  /* ---- follow-up chips ------------------------------------------------ */
+
+  .cc-nudge {
+      font-size: 0.71rem; font-weight: 600; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--cc-faint);
+      margin: 0.85rem 0 0.4rem;
+  }
+  [class*="st-key-cc-followups"] .stButton > button {
       width: 100%; text-align: left; white-space: normal; height: auto;
-      padding: 0.68rem 0.85rem; border-radius: 12px; font-weight: 450;
-      font-size: 0.86rem; line-height: 1.35;
+      padding: 0.42rem 0.8rem;
+      border-radius: 999px;
+      border: 1px solid var(--cc-line);
+      background: var(--cc-surface);
+      color: var(--cc-body);
+      font-size: 0.815rem; font-weight: 450; line-height: 1.35;
+      box-shadow: none;
+      transition: background .14s ease, border-color .14s ease, color .14s ease;
   }
-  .stButton > button:hover { border-color: #0e9f6e; color: inherit; }
+  [class*="st-key-cc-followups"] .stButton > button:hover {
+      background: var(--cc-tint); border-color: #bfe0d8; color: var(--cc-accent-d);
+  }
 
-  /* Urgency chip + audit control. */
-  .cc-chip { display: inline-block; padding: 3px 11px; border-radius: 999px;
-             color: #fff; font-size: 0.72rem; font-weight: 600;
-             letter-spacing: 0.02em; margin: 0.15rem 0 0.1rem; }
-  .cc-chip span { font-weight: 400; opacity: 0.88; }
-  [data-testid="stExpander"] { border: none; }
-  [data-testid="stExpander"] summary { font-size: 0.78rem; opacity: 0.62; padding-left: 0; }
-  [data-testid="stExpander"] summary:hover { opacity: 1; }
+  /* ---- urgency chip --------------------------------------------------- */
 
-  .cc-foot { text-align: center; font-size: 0.72rem; opacity: 0.5;
-             margin: 0.45rem 0 0; }
-  .cc-note { font-size: 0.78rem; opacity: 0.68; }
+  .cc-chip {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.3rem 0.72rem 0.3rem 0.62rem;
+      border-radius: 9px; font-size: 0.735rem;
+      margin: 0.3rem 0 0.1rem;
+      border: 1px solid; border-left-width: 3px;
+  }
+  .cc-chip b { font-weight: 650; letter-spacing: 0.035em; }
+  .cc-chip span { font-weight: 450; opacity: 0.82; }
+
+  /* ---- audit panel ---------------------------------------------------- */
+
+  [data-testid="stExpander"] { border: none; background: transparent; }
+  [data-testid="stExpander"] details { border: none; background: transparent; }
+  [data-testid="stExpander"] summary {
+      font-size: 0.775rem; font-weight: 500; color: var(--cc-faint);
+      padding-left: 0; transition: color .14s ease;
+  }
+  [data-testid="stExpander"] summary:hover { color: var(--cc-accent); }
+  [data-testid="stExpander"] [data-testid="stExpanderDetails"] {
+      border-left: 2px solid var(--cc-line);
+      padding-left: 0.95rem; margin-left: 0.15rem;
+  }
+  [data-testid="stExpander"] [data-testid="stExpanderDetails"] p,
+  [data-testid="stExpander"] [data-testid="stExpanderDetails"] li {
+      font-size: 0.795rem; line-height: 1.55; color: var(--cc-muted);
+  }
+  [data-testid="stExpander"] code {
+      font-size: 0.74rem; background: var(--cc-canvas);
+      color: var(--cc-accent-d); padding: 0.05rem 0.28rem; border-radius: 4px;
+  }
+
+  /* ---- chat input ------------------------------------------------------ */
+
+  [data-testid="stChatInput"] {
+      border-radius: 15px; border: 1px solid var(--cc-line);
+      background: var(--cc-surface); box-shadow: var(--cc-shadow);
+  }
+  [data-testid="stChatInput"]:focus-within {
+      border-color: #bfe0d8;
+      box-shadow: 0 0 0 3px rgba(11,122,107,.10), var(--cc-shadow);
+  }
+  [data-testid="stBottomBlockContainer"] { background: transparent; }
+
+  /* ---- footer ---------------------------------------------------------- */
+
+  .cc-foot {
+      text-align: center; font-size: 0.735rem; color: var(--cc-faint);
+      margin: 0.7rem 0 0; line-height: 1.6;
+  }
+  .cc-sig {
+      text-align: center; font-size: 0.715rem; color: var(--cc-faint);
+      margin: 0.45rem 0 0; padding-top: 0.55rem;
+      border-top: 1px solid var(--cc-line-soft);
+  }
+  .cc-sig a { color: var(--cc-muted); text-decoration: none; font-weight: 500; }
+  .cc-sig a:hover { color: var(--cc-accent); text-decoration: underline;
+                    text-underline-offset: 2px; }
+  .cc-sig .cc-dot { color: var(--cc-line); margin: 0 0.42rem; }
+
+  /* ---- page furniture for the non-chat views --------------------------- */
+
+  .cc-page-title {
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 1.62rem; font-weight: 500; letter-spacing: -0.015em;
+      color: var(--cc-ink); margin: 0.6rem 0 0.35rem;
+  }
+  .cc-note {
+      font-size: 0.855rem; line-height: 1.62; color: var(--cc-muted);
+      margin: 0 0 1.1rem;
+  }
+  [data-testid="stMetric"] {
+      background: var(--cc-surface); border: 1px solid var(--cc-line-soft);
+      border-radius: 13px; padding: 0.7rem 0.85rem; box-shadow: var(--cc-shadow);
+  }
+  [data-testid="stMetricLabel"] p {
+      font-size: 0.72rem !important; font-weight: 500; color: var(--cc-faint);
+      letter-spacing: 0.02em;
+  }
+  [data-testid="stMetricValue"] {
+      font-size: 1.42rem; font-weight: 600; color: var(--cc-ink);
+      letter-spacing: -0.015em;
+  }
+
+  /* ---- sidebar ---------------------------------------------------------- */
+
+  [data-testid="stSidebar"] {
+      background: var(--cc-surface); border-right: 1px solid var(--cc-line-soft);
+  }
+  .cc-brand {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 1.02rem; font-weight: 600; letter-spacing: -0.015em;
+      color: var(--cc-ink); margin: 0.2rem 0 0.15rem;
+  }
+  .cc-brand-sub {
+      font-size: 0.755rem; color: var(--cc-faint); line-height: 1.5;
+      margin: 0 0 0.1rem;
+  }
+  [data-testid="stSidebar"] [data-testid="stRadio"] label p { font-size: 0.87rem; }
+  .cc-status {
+      font-size: 0.735rem; line-height: 1.62; color: var(--cc-muted);
+  }
+  .cc-status b { color: var(--cc-body); font-weight: 600; }
+  .cc-dot-live {
+      display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--cc-accent); margin-right: 0.38rem; vertical-align: middle;
+  }
+  .cc-dot-off { background: var(--cc-faint); }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -138,10 +386,18 @@ HEALTH = ASSISTANT.health()
 
 
 def chip(level: Urgency, note: str) -> str:
+    """The urgency chip: tinted ground, saturated rule and label.
+
+    Colour is carried by a 3px left rule and the label text rather than a solid
+    fill. Five solid-filled levels make every answer look like an alert, and
+    once ROUTINE is shouting, EMERGENCY has nothing left to shout with.
+    """
     meta = LEVELS[level]
     return (
-        f'<div class="cc-chip" style="background:{meta.colour}">'
-        f"{meta.badge} <span>· {note}</span></div>"
+        f'<div class="cc-chip" style="border-color:{meta.colour}33;'
+        f"border-left-color:{meta.colour};background:{meta.colour}0d;"
+        f'color:{meta.colour}">'
+        f"<b>{meta.badge}</b><span>{note}</span></div>"
     )
 
 
@@ -165,16 +421,20 @@ init_state()
 # --------------------------------------------------------------------------
 
 with st.sidebar:
-    st.markdown(f"#### 🧭 {APP_NAME}")
-    st.caption("Health guidance with a safety floor you can audit")
+    st.markdown(
+        f'<div class="cc-brand">🧭 {APP_NAME}</div>'
+        '<p class="cc-brand-sub">Health guidance with a safety floor you can audit</p>',
+        unsafe_allow_html=True,
+    )
+    st.write("")
 
     page = st.radio(
         "View",
-        ["Chat", "Insights", "Evaluation", "How it works"],
+        ["Chat", "Insights", "Evaluation"],
         label_visibility="collapsed",
     )
 
-    st.button("New chat", width="stretch", on_click=new_chat)
+    st.button("New chat", width="stretch", on_click=new_chat, icon=":material/add:")
 
     language_label = st.selectbox("Reply language", list(SUPPORTED_LANGUAGES.values()))
     language = next(
@@ -183,14 +443,53 @@ with st.sidebar:
     )
 
     st.divider()
+
     llm = HEALTH["llm"]
-    if llm["available"]:
-        st.caption(f"**Model** · {llm['label']} · `{llm['model']}`")
-    else:
-        st.caption("**No model key** · answers are quoted from the corpus")
-    st.caption(
-        f"**Retrieval** · {HEALTH['retrieval']['mode']}, "
-        f"{HEALTH['corpus']['chunks']} passages · v{VERSION}"
+    web = HEALTH["web"]
+    model_line = (
+        f'<b>{llm["label"]}</b> · <code>{llm["model"]}</code>'
+        if llm["available"]
+        else "<b>No model key</b> · answers quoted from the corpus"
+    )
+    web_line = (
+        f'<b>Web tier</b> · {", ".join(web["tiers"])}, {web["domains"]} trusted sources'
+        if web["enabled"]
+        else "<b>Web tier</b> · off"
+    )
+    st.markdown(
+        '<div class="cc-status">'
+        f'<span class="cc-dot-live{"" if llm["available"] else " cc-dot-off"}"></span>'
+        f"{model_line}<br>"
+        f'<span class="cc-dot-live{"" if web["enabled"] else " cc-dot-off"}"></span>'
+        f"{web_line}<br>"
+        f'<span class="cc-dot-live"></span><b>Retrieval</b> · '
+        f'{HEALTH["retrieval"]["mode"]}, {HEALTH["corpus"]["chunks"]} passages'
+        f"<br><span style='opacity:.6'>v{VERSION}</span>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def render_footer() -> None:
+    """Disclaimer and author line, at the true foot of the chat view."""
+    st.markdown(
+        '<p class="cc-foot">General health information, not a diagnosis or a '
+        "prescription. In an emergency call 112.</p>",
+        unsafe_allow_html=True,
+    )
+    signature()
+
+
+def signature() -> None:
+    """Author line. Rendered once at the foot of whichever view is open."""
+    st.markdown(
+        '<p class="cc-sig">'
+        f'<a href="{AUTHOR_URL}" target="_blank" rel="noopener">{AUTHOR}</a>'
+        f'<span class="cc-dot">·</span>{AUTHOR_AFFILIATION}'
+        f'<span class="cc-dot">·</span>'
+        f'<a href="{AUTHOR_URL}" target="_blank" rel="noopener">abhaanisha.github.io</a>'
+        "</p>",
+        unsafe_allow_html=True,
     )
 
 
@@ -208,40 +507,73 @@ def render_audit(meta: dict) -> None:
         st.markdown(meta["trace"])
 
 
+def render_followups(followups: list[str], turn: int) -> None:
+    """Clickable next questions under the most recent answer.
+
+    Only under the most recent one. A chip beside an answer three turns back is
+    not a suggestion any more, it is clutter that silently rewrites the thread
+    when someone clicks it.
+    """
+    if not followups:
+        return
+    st.markdown('<p class="cc-nudge">You might ask</p>', unsafe_allow_html=True)
+    # The key has to be unique per turn — Streamlit refuses duplicates — but
+    # the CSS hook is the shared `st-key-cc-followups` prefix it generates.
+    with st.container(key=f"cc-followups-{turn}"):
+        for i, (column, text) in enumerate(
+            zip(st.columns(len(followups), gap="small"), followups)
+        ):
+            if column.button(text, key=f"fu{turn}-{i}"):
+                st.session_state.pending = text
+                st.rerun()
+
+
 def render_chat() -> None:
     history = st.session_state.history
 
-    if not history:
-        st.markdown(
-            '<div class="cc-hero"><h1>What is going on?</h1>'
-            "<p>Describe a symptom in English, Hindi or Bengali. "
-            "Every answer shows the rules that fired and the passages it used.</p></div>",
-            unsafe_allow_html=True,
-        )
-        left, right = st.columns(2, gap="small")
-        for i, (label, prompt) in enumerate(SUGGESTIONS):
-            with (left, right)[i % 2]:
-                if st.button(label, key=f"sg{i}"):
-                    st.session_state.pending = prompt
-                    st.rerun()
-
-    for entry in history:
-        with st.chat_message(entry["role"]):
-            st.markdown(entry["content"])
-            if entry.get("meta"):
-                render_audit(entry["meta"])
-
+    # Read the input first even though it paints last: Streamlit pins the chat
+    # input to the bottom of the viewport wherever it is called, so knowing
+    # early whether a turn is in flight lets the rest of the view lay itself
+    # out correctly — chips only under the answer that is actually last, and
+    # the disclaimer genuinely at the foot of the page rather than stranded
+    # above the reply that just arrived.
     typed = st.chat_input("Describe a health concern…")
     message = typed or st.session_state.pending
     st.session_state.pending = None
 
-    st.markdown(
-        '<p class="cc-foot">General health information, not a diagnosis or a '
-        "prescription. In an emergency call 112.</p>",
-        unsafe_allow_html=True,
-    )
+    if not history and not message:
+        st.markdown(
+            '<div class="cc-hero">'
+            '<div class="cc-mark">Grounded · Auditable · Triaged</div>'
+            "<h1>What is going on?</h1>"
+            "<p>Describe a symptom in English, Hindi or Bengali. Every answer shows "
+            "the rules that fired and the passages it used — from a curated "
+            "knowledge base, and from public-health sources when the question "
+            "reaches past it.</p></div>",
+            unsafe_allow_html=True,
+        )
+        with st.container(key="cc-suggestions"):
+            left, right = st.columns(2, gap="small")
+            for i, (label, prompt, icon) in enumerate(SUGGESTIONS):
+                with (left, right)[i % 2]:
+                    if st.button(label, key=f"sg{i}", icon=icon):
+                        st.session_state.pending = prompt
+                        st.rerun()
+
+    last = len(history) - 1
+    for index, entry in enumerate(history):
+        with st.chat_message(entry["role"]):
+            st.markdown(entry["content"])
+            if entry.get("meta"):
+                render_audit(entry["meta"])
+                # Not when a new turn is about to be appended below: chips
+                # belong to the last answer on screen, and for the next second
+                # that is not this one.
+                if index == last and not message:
+                    render_followups(entry["meta"].get("followups", []), index)
 
     if not message:
+        render_footer()
         return
 
     with st.chat_message("user"):
@@ -276,21 +608,31 @@ def render_chat() -> None:
             st.write_stream(stream)
 
         used = sum(1 for c in result.citations if c.used)
+        web_used = sum(1 for c in result.citations if c.used and c.kind == "web")
+        if used and web_used:
+            label = (
+                f"{used} source{'' if used == 1 else 's'} cited "
+                f"({web_used} from the web) · decision trace"
+            )
+        elif used:
+            label = f"{used} source{'' if used == 1 else 's'} cited · decision trace"
+        else:
+            label = "Decision trace"
+
         meta = {
             "level": result.triage.level.name,
             "note": f"{result.triage.meta.timeframe} · {result.latency_ms} ms",
-            "audit_label": (
-                f"{used} source{'' if used == 1 else 's'} cited · decision trace"
-                if used
-                else "Decision trace"
-            ),
+            "audit_label": label,
             "sources": result.sources_markdown(),
             "trace": result.trace_markdown(),
+            "followups": getattr(result, "followups", []),
         }
         render_audit(meta)
+        render_followups(meta["followups"], len(history) + 1)
 
     history.append({"role": "user", "content": message})
     history.append({"role": "assistant", "content": body, "meta": meta})
+    render_footer()
 
 
 # --------------------------------------------------------------------------
@@ -299,7 +641,7 @@ def render_chat() -> None:
 
 
 def render_insights() -> None:
-    st.subheader("Insights")
+    st.markdown('<h2 class="cc-page-title">Insights</h2>', unsafe_allow_html=True)
     st.markdown(
         '<p class="cc-note">One redacted row per turn: the rule outcome, the documents '
         "retrieved and the latency. No free text is stored. This is the instrumentation a "
@@ -325,12 +667,13 @@ def render_insights() -> None:
 
     if not events:
         st.info("No turns yet. Ask something in the Chat view.")
+        signature()
         return
 
     st.caption("Urgency distribution")
     st.bar_chart(stats["triage"], horizontal=True, color="#4b6bfb", height=190)
     st.caption("Most retrieved documents")
-    st.bar_chart(stats["topics"], horizontal=True, color="#0e9f6e", height=230)
+    st.bar_chart(stats["topics"], horizontal=True, color="#0b7a6b", height=230)
     if stats["red_flags"]:
         st.caption("Red flags triggered")
         st.bar_chart(stats["red_flags"], horizontal=True, color="#d1242f", height=190)
@@ -343,6 +686,7 @@ def render_insights() -> None:
                     "lang": e.get("language", ""),
                     "urgency": e.get("triage_level", ""),
                     "mode": e.get("mode", ""),
+                    "web": e.get("web_provider") or "-",
                     "red flags": ", ".join(e.get("red_flags") or []) or "-",
                     "ms": e.get("latency_ms", 0),
                 }
@@ -352,6 +696,8 @@ def render_insights() -> None:
             hide_index=True,
         )
 
+    signature()
+
 
 # --------------------------------------------------------------------------
 # evaluation
@@ -359,7 +705,9 @@ def render_insights() -> None:
 
 
 def render_evaluation() -> None:
-    st.subheader("Does it actually work?")
+    st.markdown(
+        '<h2 class="cc-page-title">Does it actually work?</h2>', unsafe_allow_html=True
+    )
     st.markdown(
         '<p class="cc-note">52 hand-labelled cases across 11 clinical categories and three '
         "languages. <b>Emergency recall</b> is the number to read first: a system that sends "
@@ -381,6 +729,7 @@ def render_evaluation() -> None:
         data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
     if not data:
         st.info("Press the button to run the gold set.")
+        signature()
         return
 
     metrics = data["metrics"]
@@ -412,65 +761,12 @@ def render_evaluation() -> None:
     else:
         st.success("All cases passed.")
 
-
-# --------------------------------------------------------------------------
-# about
-# --------------------------------------------------------------------------
-
-ABOUT = f"""
-### How an answer is produced
-
-```
-user message
-    │
-    ├─▶ 1. safety scan     19 rules, 3 languages, negation scoped per pattern
-    ├─▶ 2. triage floor    5 levels, each tied to a timeframe
-    ├─▶ 3. retrieval       BM25 (+ embeddings where installed), RRF fusion
-    │
-    ├─▶ 4a. emergency or self-harm  → fixed text, in your language
-    ├─▶ 4b. symptom too vague       → ask what a clinician would ask
-    └─▶ 4c. otherwise               → model answers from the passages only,
-                                      must cite, may raise urgency, never lower it
-```
-
-**The safety-critical path contains no language model.** When a red flag fires,
-the words you see are fixed text, including the Hindi and Bengali versions. An
-ambulance number cannot be paraphrased, and nothing in a later message can talk
-the assistant out of it.
-
-**The model can escalate, never de-escalate.** The rules compute a floor; the
-model's urgency vote is merged with `max()`. Missing an emergency and sending
-someone to hospital unnecessarily are not comparable errors, so the system is
-not permitted to trade the first for fewer of the second.
-
-**Every answer degrades instead of failing.** No key, a rate limit, a timeout or
-a dead provider all fall through to an answer quoted from the retrieved
-passages, labelled as such.
-
-### Current configuration
-
-- Retrieval: `{HEALTH['retrieval']['mode']}` over {HEALTH['corpus']['chunks']} passages
-  from {HEALTH['corpus']['documents']} documents
-- Model: `{HEALTH['llm']['label']}`{' · `' + str(HEALTH['llm']['model']) + '`' if HEALTH['llm']['available'] else ' (none configured)'}
-
-### Limitations
-
-The corpus is a compact demonstration set written from public health guidance,
-not a clinical guideline library. Rules are regular expressions, so a red flag
-phrased in a way no pattern anticipates will not fire — which is exactly why the
-model is allowed to escalate. Event logs reset when the app restarts.
-
-**It is not a doctor.** No diagnosis, no prescriptions, no reading your test
-reports. In an emergency, call **112**.
-"""
+    signature()
 
 
 if page == "Chat":
     render_chat()
 elif page == "Insights":
     render_insights()
-elif page == "Evaluation":
-    render_evaluation()
 else:
-    st.subheader("How it works")
-    st.markdown(ABOUT)
+    render_evaluation()

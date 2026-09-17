@@ -1,9 +1,11 @@
+# The CSS in streamlit_app.py does the detailed work; these are the values
+# Streamlit bakes into widget internals that CSS cannot reliably reach.
 [theme]
 base = "light"
-primaryColor = "#0e9f6e"
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#f4f6f8"
-textColor = "#1a1d21"
+primaryColor = "#0b7a6b"
+backgroundColor = "#f7fafb"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#101a24"
 font = "sans serif"
 
 [server]
