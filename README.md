@@ -1,8 +1,6 @@
 ---
-Live at: [https://abhaanisha-carecompass.streamlit.app/](https://abhaanisha-carecompass.streamlit.app/)
----
 title: CareCompass Health Assistant
-emoji: 🧭
+emoji: "🧭"
 colorFrom: green
 colorTo: blue
 sdk: gradio
@@ -10,10 +8,12 @@ app_file: app.py
 python_version: "3.11"
 pinned: false
 license: mit
-short_description: Safety-first health triage assistant with auditable rules
+short_description: "Safety-first health triage assistant with auditable rules"
 ---
 
-# CareCompass
+## CareCompass Health Assistant
+
+Live at: [https://abhaanisha-carecompass.streamlit.app/](https://abhaanisha-carecompass.streamlit.app/)
 
 **A health information assistant where the safety-critical decisions are made by
 auditable rules, not by a language model.**
